@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1.5rem auto; max-width: 1080px; padding: 0 1rem; }
+    h1, h2, h3, h4 { margin-bottom: 0.4rem; }
+    ul { margin-top: 0.3rem; margin-bottom: 1rem; }
+    li { margin: 0.25rem 0; }
+  </style>
+</head>
+<body>
+  <h1>{{ title }}</h1>
+  {% for group in groups %}
+  <section>
+    <h2>Bike: {{ group.bike }}</h2>
+    <h3>Category: {{ group.category }}</h3>
+    <h4>Condition: {{ group.condition }} | Source: {{ group.source }}</h4>
+    <ul>
+      {% for item in group.items %}
+      <li>
+        <a href="{{ item.url }}">{{ item.title }}</a>
+        {% if item.price_amount is not none %}
+          — {{ item.price_amount }} {{ item.price_currency or "" }}
+        {% endif %}
+        — {{ item.listing_status }}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</body>
+</html>
