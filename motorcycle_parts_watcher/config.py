@@ -16,6 +16,7 @@ class Settings(BaseModel):
     ebay_marketplace_id: str = Field(default="EBAY_US", alias="EBAY_MARKETPLACE_ID")
     ebay_marketplace_ids: str = Field(default="", alias="EBAY_MARKETPLACE_IDS")
     yahoo_auctions_enabled: bool = Field(default=False, alias="YAHOO_AUCTIONS_ENABLED")
+    buyee_enabled: bool = Field(default=False, alias="BUYEE_ENABLED")
     webike_enabled: bool = Field(default=False, alias="WEBIKE_ENABLED")
     webike_catalog_makes: str = Field(default="", alias="WEBIKE_CATALOG_MAKES")
     webike_jp_enabled: bool = Field(default=False, alias="WEBIKE_JP_ENABLED")

@@ -38,7 +38,7 @@ parts-watch crawl-watches                         # watch sweep only
 parts-watch search --query "exhaust" --bike-key suzuki-katana-1100-1990   # enqueues + waits
 
 # CLI — worker side (claims and runs jobs)
-parts-watch worker --worker-id central-1 --adapters ebay,webike,manual_search
+parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search
 parts-watch worker --worker-id jp-1 --adapters webike_jp,yahoo_auctions,croooober,mercari,monotaro,rakuten,goobike
 
 # CLI — queue admin
@@ -63,7 +63,8 @@ The producer and worker are decoupled by the queue so workers can run on geo-dis
   - `ebay.py` — primary, OAuth + Browse API
   - `webike.py` — scrapes the bike's `/md/{ID}` page; reads schema.org microdata (`<meta itemprop="price">`); finds product images by walking *up* from the price meta to a sibling `item__header__img` div
   - `manual_search.py` — fallback that hashes the query into `source_item_id` so different queries on the same bike produce distinct rows
-  - `yahoo_auctions.py` — stub
+  - `yahoo_auctions.py` — direct scrape of auctions.yahoo.co.jp (works from JP IPs)
+  - `buyee.py` — same Yahoo Auctions inventory via the buyee.jp proxy-buying service; reachable from non-JP IPs, English chrome, JPY prices preserved. `source_name="buyee"` so rows don't collide with `yahoo_auctions`.
 - **`schemas.py`** — `NormalizedListing` (Pydantic) is the adapter↔ingest contract.
 - **`bikes.py`** — `BikeRef` dataclass; `load_active_bikes(session)` returns the set of bikes any console user has selected (joins `console.user_bikes` cross-schema). The crawl scope is **DB-driven**, not hardcoded.
 - **`services/ingest.py`** — categorizes (`utils/categorizer.py`), hashes (`utils/hashing.py`), upserts on `(source_name, source_item_id)` UNIQUE, always writes one `listing_snapshots` row per crawl.
@@ -172,7 +173,7 @@ For geo-routing (e.g. JP-locale scrapers from a JP host to avoid IP blocks):
    ```
 4. On the central host run a worker for the rest:
    ```bash
-   parts-watch worker --worker-id central-1 --adapters ebay,webike,manual_search
+   parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search
    ```
 5. Run both as systemd units. The worker periodically calls `release_stale` so a crashed worker's locked rows return to `pending`.
 

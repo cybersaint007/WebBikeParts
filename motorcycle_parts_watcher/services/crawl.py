@@ -10,6 +10,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from motorcycle_parts_watcher.adapters import (
+    BuyeeAdapter,
     CroooberAdapter,
     EbayAdapter,
     GoobikeAdapter,
@@ -42,6 +43,7 @@ def _build_adapters(settings: Settings) -> list:
     return [
         EbayAdapter(settings),
         YahooAuctionsAdapter(settings),
+        BuyeeAdapter(settings),
         WebikeAdapter(settings),
         WebikeJpAdapter(settings),
         CroooberAdapter(settings),

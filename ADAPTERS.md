@@ -40,6 +40,7 @@ Status legend:
 |---|---|---|---|---|
 | eBay | `ebay` | **Live** (needs creds) | OAuth REST API | Multi-marketplace fan-out |
 | Yahoo Auctions JP | `yahoo_auctions` | **Live** | HTML scrape | Best for vintage JDM bikes |
+| Buyee | `buyee` | **Live** | HTML scrape | JP proxy; same Yahoo Auctions inventory but reachable from non-JP IPs and renders English |
 | Webike TW | `webike` | **Live** | HTML scrape | Bike-keyed (`/md/{ID}` pages) |
 | Monotaro | `monotaro` | **Live (no prices)** | HTML scrape | Industrial parts catalog |
 | Manual search | `manual_search` | **Live** | Local fallback | Query-driven only |
@@ -105,6 +106,33 @@ YAHOO_AUCTIONS_ENABLED=true
 No API key. No rate-limit headaches at modest crawl rates (default is 3 req/s globally, shared by all adapters via `AsyncRateLimiter`).
 
 **Per-row metadata.** `raw_json` carries `search_terms`, `bid_count`, `has_buy_now`.
+
+---
+
+### Buyee (`buyee`)
+
+**What it pulls.** Active Yahoo Auctions JP listings as surfaced by Buyee, the JP proxy-buying service. Same inventory as `yahoo_auctions`, different DOM, renders English chrome and is reachable from non-JP IPs without geo issues. Use as a fallback or complement to `yahoo_auctions` (and a replacement when running from a region that gets challenged on `auctions.yahoo.co.jp`).
+
+**How it works.** Plain HTML scrape of `https://buyee.jp/item/search/query/<q>?lang=en`. Each `<li class="itemCard">` carries:
+
+- `a[href*="/item/jdirectitems/auction/{ID}"]` — anchor; ID is the original Yahoo Auctions ID (e.g. `v1228666690`)
+- `.itemCard__itemName a` — title (Japanese, untranslated)
+- `.g-priceDetails__item .g-price` — price text like `1,200 YEN`. The accompanying `.g-title` distinguishes `Current Price` (auction bid), `Buyout Price` (即決), and `Price` (store fixed-price). The adapter prefers Current → Buyout → Price.
+- `img.g-thumbnail__image[data-src]` — lazy-loaded image
+- `.itemCard__infoItem` (label "Number of Bids") — bid count
+- `.auctionSearchResult__statusList` containing `STORE` — flags STORE-seller listings
+
+Item IDs are the Yahoo Auctions IDs, but `source_name="buyee"` is used so rows don't collide with the `yahoo_auctions` adapter when both are enabled.
+
+**Configuration.**
+
+```env
+BUYEE_ENABLED=true
+```
+
+No API key.
+
+**Per-row metadata.** `raw_json` carries `search_terms`, `price_label` (`Current Price` / `Buyout Price` / `Price`), `bid_count`, `is_store`.
 
 ---
 
@@ -205,6 +233,7 @@ EBAY_MARKETPLACE_IDS=EBAY_US,EBAY_GB,EBAY_DE,EBAY_AU,EBAY_IT
 
 # Other live sources
 YAHOO_AUCTIONS_ENABLED=true
+BUYEE_ENABLED=true
 WEBIKE_ENABLED=true
 WEBIKE_CATALOG_MAKES=SUZUKI
 MONOTARO_ENABLED=true
@@ -298,6 +327,7 @@ Each adapter declares a `preferred_query_lang` class attribute:
 | `EbayAdapter` | `"en"` |
 | `WebikeAdapter` | `"zh-TW"` |
 | `YahooAuctionsAdapter` | `"ja"` |
+| `BuyeeAdapter` | `"ja"` |
 | `MonotaroAdapter` | `"ja"` |
 | `ManualSearchAdapter` | `None` (preserves the user's literal query) |
 | All stubs | `None` |

@@ -1,3 +1,4 @@
+from motorcycle_parts_watcher.adapters.buyee import BuyeeAdapter
 from motorcycle_parts_watcher.adapters.croooober import CroooberAdapter
 from motorcycle_parts_watcher.adapters.ebay import EbayAdapter
 from motorcycle_parts_watcher.adapters.goobike import GoobikeAdapter
@@ -10,6 +11,7 @@ from motorcycle_parts_watcher.adapters.webike_jp import WebikeJpAdapter
 from motorcycle_parts_watcher.adapters.yahoo_auctions import YahooAuctionsAdapter
 
 __all__ = [
+    "BuyeeAdapter",
     "CroooberAdapter",
     "EbayAdapter",
     "GoobikeAdapter",
