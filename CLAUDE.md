@@ -103,8 +103,14 @@ npm install && npm run dev          # Vite dev server (or: npm run build)
 php artisan serve                   # Laravel dev server
 php artisan test                    # Pest
 
-# REQUIRED for any on-demand action (Refresh catalog, Live search, auto-crawl on bike add):
+# REQUIRED for any on-demand action (Refresh catalog, Live search, auto-crawl on bike add)
+# AND for the hourly scheduled sweeps to actually fire:
 php artisan queue:work --queue=sync
+
+# Required for the hourly sweeps. One cron entry runs the scheduler each minute;
+# the scheduler decides which jobs are due. Without this, crawl-all / crawl-watches
+# never run automatically.
+* * * * * cd /path/to/console && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 ### Architecture
@@ -118,6 +124,8 @@ php artisan queue:work --queue=sync
   - `SyncWebikeCatalogJob` — `parts-watch sync-catalog` (unchanged)
   - `CrawlBikeJob` — `parts-watch crawl --bike <catalog_key>`, dispatched from `MyBikesController@store`. Will time out if no worker is running for the required adapters.
   - `LiveSearchJob` — `parts-watch search --query <q> --bike-key …`
+  - `CrawlAllJob` — `parts-watch crawl-all`, dispatched **hourly** by the scheduler (`Console\Kernel::schedule`). Skipped if a previous `crawl_all` SyncRun is still queued/running, so a long sweep doesn't pile up duplicates.
+  - `CrawlWatchesJob` — `parts-watch crawl-watches`, dispatched hourly under the same in-flight guard.
   - `RunPartsWatchJob` — base class with the env-override gotcha below
 - **CRITICAL — subprocess env override**: when Laravel shells out, `Process::env([...])` must explicitly set `DATABASE_URL` and `DB_SCHEMA=watcher`. Otherwise the child process inherits Laravel's `DB_SCHEMA=console` and the crawler hits the wrong schema (e.g. `console.sources` doesn't exist). See `RunPartsWatchJob.php`.
 - **Watch list semantics**: every `/parts/live-search` POST `firstOrCreate`s a `parts_watches` row at high priority (re-promotes if previously revoked). "Revoke priority" sets `is_high_priority=false` + `priority_revoked_at=now()` but **keeps the row**. Only the watch-sweep pass in `services/crawl.py` re-crawls high-priority rows.

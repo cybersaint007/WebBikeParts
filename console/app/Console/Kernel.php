@@ -2,6 +2,9 @@
 
 namespace App\Console;
 
+use App\Jobs\CrawlAllJob;
+use App\Jobs\CrawlWatchesJob;
+use App\Models\SyncRun;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -15,7 +18,37 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Hourly bike sweep: every active bike × every enabled adapter.
+        // Skipped if a prior crawl-all is still queued/running, so a slow
+        // sweep doesn't pile up duplicates the next hour.
+        $schedule->call(fn () => $this->dispatchSweep(SyncRun::KIND_CRAWL_ALL, CrawlAllJob::class))
+            ->hourly()
+            ->name('crawl-all')
+            ->onOneServer();
+
+        // Hourly watch-list sweep: only is_high_priority=true rows.
+        // Cheaper than crawl-all and the reason the watch-list exists.
+        $schedule->call(fn () => $this->dispatchSweep(SyncRun::KIND_CRAWL_WATCHES, CrawlWatchesJob::class))
+            ->hourly()
+            ->name('crawl-watches')
+            ->onOneServer();
+    }
+
+    private function dispatchSweep(string $kind, string $jobClass): void
+    {
+        $inFlight = SyncRun::where('kind', $kind)
+            ->whereIn('status', [SyncRun::STATUS_QUEUED, SyncRun::STATUS_RUNNING])
+            ->exists();
+        if ($inFlight) {
+            return;
+        }
+        $run = SyncRun::create([
+            'kind' => $kind,
+            'status' => SyncRun::STATUS_QUEUED,
+            'triggered_by' => null,
+            'payload' => ['source' => 'scheduler'],
+        ]);
+        $jobClass::dispatch($run->id)->onQueue('sync');
     }
 
     /**
