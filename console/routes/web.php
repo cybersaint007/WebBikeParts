@@ -8,6 +8,7 @@ use App\Http\Controllers\CatalogLookupController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\WatchListController;
 use App\Http\Controllers\Admin\UsersController as AdminUsersController;
+use App\Http\Controllers\Admin\AdapterStatusController;
 
 Auth::routes(['register' => false]);
 
@@ -39,7 +40,11 @@ Route::middleware('auth')->group(function () {
     Route::patch('/watch-list/{watch}/priority', [WatchListController::class, 'togglePriority'])->name('watch-list.priority');
     Route::delete('/watch-list/{watch}',         [WatchListController::class, 'destroy'])->name('watch-list.destroy');
 
-    Route::resource('admin/users', AdminUsersController::class)->names('admin.users');
+    Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::resource('users', AdminUsersController::class)->names('users');
+        Route::get('adapters', [AdapterStatusController::class, 'index'])->name('adapters.index');
+        Route::get('adapters/status.json', [AdapterStatusController::class, 'status'])->name('adapters.status');
+    });
 });
 
 Route::get('{any}', [App\Http\Controllers\HomeController::class, 'index'])->name('index');

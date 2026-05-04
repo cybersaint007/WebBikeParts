@@ -35,11 +35,13 @@ class UsersController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', Rule::unique('users', 'email')],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'role' => ['required', Rule::in(User::ROLES)],
         ]);
         User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'role' => $data['role'],
             'email_verified_at' => now(),
         ]);
         return redirect()->route('admin.users.index')->with('status', "User {$data['email']} created.");
@@ -56,9 +58,18 @@ class UsersController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'role' => ['required', Rule::in(User::ROLES)],
         ]);
+
+        if ($user->id === auth()->id() && $data['role'] !== User::ROLE_ADMIN) {
+            return back()
+                ->withInput()
+                ->withErrors(['role' => "You can't demote yourself out of admin."]);
+        }
+
         $user->name = $data['name'];
         $user->email = $data['email'];
+        $user->role = $data['role'];
         if (!empty($data['password'])) {
             $user->password = Hash::make($data['password']);
         }

@@ -24,6 +24,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Email</th>
+                        <th>Role</th>
                         <th class="text-end">My Bikes</th>
                         <th class="text-end">Watches</th>
                         <th>Created</th>
@@ -40,6 +41,13 @@
                                 @endif
                             </td>
                             <td>{{ $u->email }}</td>
+                            <td>
+                                @if ($u->role === \App\Models\User::ROLE_ADMIN)
+                                    <span class="badge bg-primary-subtle text-primary text-uppercase">admin</span>
+                                @else
+                                    <span class="badge bg-secondary-subtle text-secondary text-uppercase">user</span>
+                                @endif
+                            </td>
                             <td class="text-end">{{ $u->user_bikes_count }}</td>
                             <td class="text-end">{{ $u->parts_watches_count }}</td>
                             <td>{{ $u->created_at->format('Y-m-d') }}</td>

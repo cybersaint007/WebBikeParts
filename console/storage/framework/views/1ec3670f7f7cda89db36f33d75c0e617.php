@@ -52,12 +52,21 @@
                         <i class="ri-eye-line"></i> <span>Watch List</span>
                     </a>
                 </li>
+                <?php if(auth()->user()?->isAdmin()): ?>
+                <li class="menu-title"><span>Admin</span></li>
                 <li class="nav-item">
                     <a class="nav-link menu-link <?php echo e(request()->routeIs('admin.users.*') ? 'active' : ''); ?>"
                        href="<?php echo e(route('admin.users.index')); ?>">
                         <i class="ri-user-settings-line"></i> <span>Users</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link <?php echo e(request()->routeIs('admin.adapters.*') ? 'active' : ''); ?>"
+                       href="<?php echo e(route('admin.adapters.index')); ?>">
+                        <i class="ri-pulse-line"></i> <span>Adapter Status</span>
+                    </a>
+                </li>
+                <?php endif; ?>
                 <?php endif; ?>
                 <li class="menu-title"><span><?php echo app('translator')->get('translation.menu'); ?></span></li>
                 <li class="nav-item">

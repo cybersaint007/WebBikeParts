@@ -13,6 +13,10 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_USER  = 'user';
+    public const ROLES      = [self::ROLE_ADMIN, self::ROLE_USER];
+
     public function userBikes(): HasMany
     {
         return $this->hasMany(UserBike::class);
@@ -28,6 +32,11 @@ class User extends Authenticatable
         return $this->userBikes()->pluck('bike_catalog_id')->all();
     }
 
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -38,6 +47,11 @@ class User extends Authenticatable
         'email',
         'password',
         'avatar',
+        'role',
+    ];
+
+    protected $attributes = [
+        'role' => self::ROLE_USER,
     ];
 
     /**

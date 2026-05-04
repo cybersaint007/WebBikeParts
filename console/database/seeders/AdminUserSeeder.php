@@ -21,8 +21,14 @@ class AdminUserSeeder extends Seeder
                 'name' => 'Admin',
                 'password' => Hash::make($password),
                 'email_verified_at' => now(),
+                'role' => User::ROLE_ADMIN,
             ]
         );
+
+        if ($admin->role !== User::ROLE_ADMIN) {
+            $admin->role = User::ROLE_ADMIN;
+            $admin->save();
+        }
 
         // Seed default My Bike entries from the legacy bootstrap catalog rows, if present.
         foreach (['suzuki-katana-1100-1990', 'suzuki-gsx1300r-2003'] as $key) {
