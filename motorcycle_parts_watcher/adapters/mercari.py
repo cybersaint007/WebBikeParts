@@ -28,6 +28,7 @@ class MercariAdapter:
     """
 
     name = "mercari"
+    preferred_query_lang: str | None = None
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings

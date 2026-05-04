@@ -24,6 +24,7 @@ class GoobikeAdapter:
     """
 
     name = "goobike"
+    preferred_query_lang: str | None = None
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings

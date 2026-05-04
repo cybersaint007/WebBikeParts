@@ -25,6 +25,7 @@ class EbayAdapter:
     """
 
     name = "ebay"
+    preferred_query_lang: str | None = "en"
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings

@@ -23,6 +23,7 @@ from motorcycle_parts_watcher.bikes import BikeRef, load_active_bikes, load_bike
 from motorcycle_parts_watcher.config import Settings
 from motorcycle_parts_watcher.models import Source
 from motorcycle_parts_watcher.services.ingest import IngestService
+from motorcycle_parts_watcher.utils.i18n import translate_for_adapter
 
 
 logger = logging.getLogger(__name__)
@@ -136,7 +137,11 @@ class CrawlService:
         ]
         result = CrawlResult(bike_key=bike.catalog_key)
 
-        tasks = [adapter.fetch(bike, query) for adapter in active_adapters]
+        # Per-adapter query translation: each adapter declares preferred_query_lang
+        # ('en' / 'zh-TW' / 'ja' / None). The original query is translated into
+        # that language using utils/i18n.py before dispatch. Bike sweep (query=None)
+        # is a no-op.
+        tasks = [adapter.fetch(bike, translate_for_adapter(query, adapter)) for adapter in active_adapters]
         batches = await asyncio.gather(*tasks, return_exceptions=True)
 
         for adapter, batch in zip(active_adapters, batches, strict=True):

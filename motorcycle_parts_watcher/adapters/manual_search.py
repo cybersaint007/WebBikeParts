@@ -12,6 +12,8 @@ from motorcycle_parts_watcher.schemas import NormalizedListing
 
 class ManualSearchAdapter:
     name = "manual_search"
+    # None = preserve the user's literal query so the watch list shows what was typed
+    preferred_query_lang: str | None = None
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings

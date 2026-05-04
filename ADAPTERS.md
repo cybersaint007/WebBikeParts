@@ -282,3 +282,50 @@ SELECT enabled FROM watcher.sources WHERE name = '<your_name>';   -- gate #2
 ```
 
 If it's listed with `0` rows, the adapter ran but returned nothing — add `logging.debug(...)` to the adapter's `_parse_*` and run with `LOG_LEVEL=DEBUG` to see what it saw.
+
+---
+
+## 7. Query translation
+
+A user typing `"exhaust"` would previously hit zero rows on Webike TW (Chinese titles), Yahoo Auctions JP (Japanese titles), and Monotaro JP (Japanese titles). To fix this, every `query` flowing through `CrawlService._crawl_one` is translated per-adapter into that adapter's preferred language *before* dispatch.
+
+### How it works
+
+Each adapter declares a `preferred_query_lang` class attribute:
+
+| Adapter | `preferred_query_lang` |
+|---|---|
+| `EbayAdapter` | `"en"` |
+| `WebikeAdapter` | `"zh-TW"` |
+| `YahooAuctionsAdapter` | `"ja"` |
+| `MonotaroAdapter` | `"ja"` |
+| `ManualSearchAdapter` | `None` (preserves the user's literal query) |
+| All stubs | `None` |
+
+The orchestrator detects the *source* language of the user's query via a character-class heuristic (hiragana/katakana → `ja`; han-only → `zh-TW`; otherwise `en`), then translates the query into each adapter's preferred language using a curated dictionary in `motorcycle_parts_watcher/utils/i18n.py`.
+
+### What gets translated
+
+A small parts-vocabulary dictionary (~40 entries: exhaust/brake/fairing/oil filter/spark plug/...) covers the most common queries. Multi-word phrases match greedily (`"oil filter"` → `"オイルフィルター"`, not `"oil"` + `"filter"`). Unknown tokens — brand names, part numbers, the bike's own model name — pass through verbatim, which is the right behaviour since proper nouns are universal.
+
+### Verified
+
+A live-search for `"exhaust"` against the Katana now ingests **92 rows** (vs. 1 before): Yahoo Auctions 50, Monotaro 40, Webike 1, manual_search 1. Identical results when the user types `"排氣管"` or `"マフラー"`.
+
+### Extending the dictionary
+
+Append a row to `PARTS_DICT` in `motorcycle_parts_watcher/utils/i18n.py`:
+
+```python
+{"en": "kickstand", "zh-TW": "側柱", "ja": "サイドスタンド"},
+```
+
+No code changes needed — the index is rebuilt at module import.
+
+### Translating to another language
+
+To add (say) German for `EBAY_DE`-specific routing:
+
+1. Add `"de"` columns to `PARTS_DICT` rows.
+2. Update `_INDEX` and `_build_index` to include `"de"`.
+3. Per-marketplace dispatch in `EbayAdapter._fetch_marketplace` would need to pick the right translation — currently the eBay adapter sends the same English query to every marketplace.
