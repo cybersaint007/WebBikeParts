@@ -16,6 +16,13 @@ __pycache__/
 # Reports / generated output
 reports/
 
+# Laravel runtime caches
+console/storage/framework/cache/data/
+console/storage/framework/views/*.php
+console/storage/framework/sessions/*
+console/storage/logs/*.log
+console/bootstrap/cache/*.php
+
 # OS / editors
 .DS_Store
 Thumbs.db

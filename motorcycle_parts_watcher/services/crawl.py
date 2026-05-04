@@ -7,7 +7,18 @@ from dataclasses import dataclass, field
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from motorcycle_parts_watcher.adapters import EbayAdapter, ManualSearchAdapter, WebikeAdapter, YahooAuctionsAdapter
+from motorcycle_parts_watcher.adapters import (
+    CroooberAdapter,
+    EbayAdapter,
+    GoobikeAdapter,
+    ManualSearchAdapter,
+    MercariAdapter,
+    MonotaroAdapter,
+    RakutenAdapter,
+    WebikeAdapter,
+    WebikeJpAdapter,
+    YahooAuctionsAdapter,
+)
 from motorcycle_parts_watcher.bikes import BikeRef, load_active_bikes, load_bike_by_key
 from motorcycle_parts_watcher.config import Settings
 from motorcycle_parts_watcher.models import Source
@@ -42,6 +53,12 @@ class CrawlService:
             EbayAdapter(settings),
             YahooAuctionsAdapter(settings),
             WebikeAdapter(settings),
+            WebikeJpAdapter(settings),
+            CroooberAdapter(settings),
+            MercariAdapter(settings),
+            RakutenAdapter(settings),
+            MonotaroAdapter(settings),
+            GoobikeAdapter(settings),
             ManualSearchAdapter(settings),
         ]
 
