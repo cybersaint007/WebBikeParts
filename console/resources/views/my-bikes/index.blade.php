@@ -1,10 +1,10 @@
 @extends('layouts.master')
-@section('title', 'My Bikes')
+@section('title', __('My Bikes'))
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Crawler @endslot
-        @slot('title') My Bikes @endslot
+        @slot('li_1') {{ __('Crawler') }} @endslot
+        @slot('title') {{ __('My Bikes') }} @endslot
     @endcomponent
 
     @if (session('status'))
@@ -15,13 +15,15 @@
     <div class="card">
         <div class="card-body d-flex flex-wrap align-items-center gap-3">
             <div class="flex-grow-1">
-                <h6 class="mb-1">Bike catalog</h6>
+                <h6 class="mb-1">{{ __('Bike catalog') }}</h6>
                 <p class="text-muted mb-0 fs-13">
                     @if ($latestCatalog?->finished_at)
-                        Last updated {{ $latestCatalog->finished_at->diffForHumans() }}
-                        ({{ $latestCatalog->finished_at->format('Y-m-d H:i') }}).
+                        {{ __('Last updated :time (:date).', [
+                            'time' => $latestCatalog->finished_at->diffForHumans(),
+                            'date' => $latestCatalog->finished_at->format('Y-m-d H:i'),
+                        ]) }}
                     @else
-                        Catalog has never been synced from webike.tw.
+                        {{ __('Catalog has never been synced from webike.tw.') }}
                     @endif
                 </p>
             </div>
@@ -29,14 +31,14 @@
                 <button class="btn btn-secondary" disabled
                         data-sync-poll="{{ route('sync.show', $catalogInflight) }}">
                     <span class="spinner-border spinner-border-sm me-1"></span>
-                    {{ $catalogInflight->status === 'running' ? 'Refreshing…' : 'Queued…' }}
+                    {{ $catalogInflight->status === 'running' ? __('Refreshing…') : __('Queued…') }}
                 </button>
             @else
                 <form method="POST" action="{{ route('sync.store') }}" class="m-0">
                     @csrf
                     <input type="hidden" name="kind" value="catalog">
                     <button type="submit" class="btn btn-primary">
-                        <i class="ri-refresh-line me-1"></i> Refresh from webike now
+                        <i class="ri-refresh-line me-1"></i> {{ __('Refresh from webike now') }}
                     </button>
                 </form>
             @endif
@@ -47,10 +49,10 @@
         {{-- Saved bikes --}}
         <div class="col-lg-7">
             <div class="card">
-                <div class="card-header"><h5 class="mb-0">Bikes you're tracking</h5></div>
+                <div class="card-header"><h5 class="mb-0">{{ __("Bikes you're tracking") }}</h5></div>
                 <div class="card-body">
                     @if ($userBikes->isEmpty())
-                        <p class="text-muted mb-0">Add a bike below to start crawling parts for it.</p>
+                        <p class="text-muted mb-0">{{ __('Add a bike below to start crawling parts for it.') }}</p>
                     @else
                         <div class="row">
                             @foreach ($userBikes as $ub)
@@ -62,7 +64,7 @@
                                     <div class="card border h-100 mb-0">
                                         <div class="card-body">
                                             <h6 class="mb-1">
-                                                {{ $cat ? $cat->displayLabel() : 'Unknown bike (catalog id ' . $ub->bike_catalog_id . ')' }}
+                                                {{ $cat ? $cat->displayLabel() : __('Unknown bike (catalog id :id)', ['id' => $ub->bike_catalog_id]) }}
                                             </h6>
                                             @if ($ub->nickname)
                                                 <p class="text-muted fs-13 mb-2">"{{ $ub->nickname }}"</p>
@@ -77,28 +79,28 @@
                                                     <span class="badge bg-warning-subtle text-warning"
                                                           data-sync-poll="{{ route('sync.show', $run) }}">
                                                         <span class="spinner-border spinner-border-sm me-1"></span>
-                                                        {{ $run->status === 'running' ? 'Crawling…' : 'Crawl queued…' }}
+                                                        {{ $run->status === 'running' ? __('Crawling…') : __('Crawl queued…') }}
                                                     </span>
                                                 @elseif ($run?->status === 'success' && $run->finished_at)
                                                     <span class="text-success">
                                                         <i class="ri-check-line"></i>
-                                                        Updated {{ $run->finished_at->diffForHumans() }}
+                                                        {{ __('Updated :time', ['time' => $run->finished_at->diffForHumans()]) }}
                                                     </span>
                                                 @elseif ($run?->status === 'failed')
                                                     <span class="text-danger" title="{{ $run->output_excerpt }}">
                                                         <i class="ri-error-warning-line"></i>
-                                                        Crawl failed — see sync_runs id {{ $run->id }}
+                                                        {{ __('Crawl failed — see sync_runs id :id', ['id' => $run->id]) }}
                                                     </span>
                                                 @else
-                                                    <span class="text-muted">Awaiting first crawl.</span>
+                                                    <span class="text-muted">{{ __('Awaiting first crawl.') }}</span>
                                                 @endif
                                             </div>
 
                                             <form method="POST" action="{{ route('my-bikes.destroy', $ub) }}" class="mt-3">
                                                 @csrf @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                        onclick="return confirm('Remove this bike?')">
-                                                    Remove
+                                                        onclick="return confirm('{{ __('Remove this bike?') }}')">
+                                                    {{ __('Remove') }}
                                                 </button>
                                             </form>
                                         </div>
@@ -114,14 +116,14 @@
         {{-- Add bike form --}}
         <div class="col-lg-5">
             <div class="card">
-                <div class="card-header"><h5 class="mb-0">Add a bike</h5></div>
+                <div class="card-header"><h5 class="mb-0">{{ __('Add a bike') }}</h5></div>
                 <div class="card-body">
                     <form method="POST" action="{{ route('my-bikes.store') }}" id="add-bike-form">
                         @csrf
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Make</label>
+                            <label class="form-label fw-medium">{{ __('Make') }}</label>
                             <select name="make" id="bike-make" class="form-select @error('make') is-invalid @enderror" required>
-                                <option value="">— Choose make —</option>
+                                <option value="">{{ __('— Choose make —') }}</option>
                                 @foreach ($makes as $m)
                                     <option value="{{ $m }}">{{ $m }}</option>
                                 @endforeach
@@ -130,33 +132,33 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Model</label>
+                            <label class="form-label fw-medium">{{ __('Model') }}</label>
                             <select name="model_slug" id="bike-model" class="form-select @error('model_slug') is-invalid @enderror" required disabled>
-                                <option value="">— Choose make first —</option>
+                                <option value="">{{ __('— Choose make first —') }}</option>
                             </select>
                             @error('model_slug') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Year</label>
+                            <label class="form-label fw-medium">{{ __('Year') }}</label>
                             <select name="year" id="bike-year" class="form-select @error('year') is-invalid @enderror" required disabled>
-                                <option value="">— Choose model first —</option>
+                                <option value="">{{ __('— Choose model first —') }}</option>
                             </select>
                             @error('year') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Nickname (optional)</label>
+                            <label class="form-label fw-medium">{{ __('Nickname (optional)') }}</label>
                             <input type="text" name="nickname" maxlength="120" class="form-control"
-                                   placeholder="e.g. My Fireblade" value="{{ old('nickname') }}">
+                                   placeholder="{{ __('e.g. My Fireblade') }}" value="{{ old('nickname') }}">
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100">Add bike</button>
+                        <button type="submit" class="btn btn-primary w-100">{{ __('Add bike') }}</button>
                     </form>
 
                     @if ($makes->isEmpty())
                         <div class="alert alert-warning mt-3 mb-0">
-                            The bike catalog is empty. Run <code>parts-watch sync-catalog</code> to populate it from webike.tw.
+                            {!! __('The bike catalog is empty. Run :code to populate it from webike.tw.', ['code' => '<code>parts-watch sync-catalog</code>']) !!}
                         </div>
                     @endif
                 </div>
@@ -166,7 +168,19 @@
 @endsection
 
 @section('script')
+@php
+    $bikesI18n = [
+        'loading'         => __('— Loading… —'),
+        'chooseMakeFirst' => __('— Choose make first —'),
+        'chooseModelFirst'=> __('— Choose model first —'),
+        'chooseModel'     => __('— Choose model —'),
+        'chooseYear'      => __('— Choose year —'),
+        'anyYear'         => __('Any year'),
+    ];
+@endphp
 <script>
+const BIKES_I18N = @json($bikesI18n);
+
 (function () {
     const makeSel  = document.getElementById('bike-make');
     const modelSel = document.getElementById('bike-model');
@@ -184,22 +198,22 @@
     }
 
     makeSel.addEventListener('change', async () => {
-        reset(modelSel, '— Loading… —');
-        reset(yearSel,  '— Choose model first —');
-        if (!makeSel.value) { reset(modelSel, '— Choose make first —'); return; }
+        reset(modelSel, BIKES_I18N.loading);
+        reset(yearSel,  BIKES_I18N.chooseModelFirst);
+        if (!makeSel.value) { reset(modelSel, BIKES_I18N.chooseMakeFirst); return; }
         const models = await load('/api/catalog/models?make=' + encodeURIComponent(makeSel.value));
-        modelSel.innerHTML = '<option value="">— Choose model —</option>' +
+        modelSel.innerHTML = '<option value="">' + BIKES_I18N.chooseModel + '</option>' +
             models.map(m => `<option value="${m.model_slug}">${m.model}</option>`).join('');
         modelSel.disabled = false;
     });
 
     modelSel.addEventListener('change', async () => {
-        reset(yearSel, '— Loading… —');
-        if (!modelSel.value) { reset(yearSel, '— Choose model first —'); return; }
+        reset(yearSel, BIKES_I18N.loading);
+        if (!modelSel.value) { reset(yearSel, BIKES_I18N.chooseModelFirst); return; }
         const years = await load('/api/catalog/years?make=' + encodeURIComponent(makeSel.value)
                                 + '&model_slug=' + encodeURIComponent(modelSel.value));
-        const opts = years.map(y => `<option value="${y}">${y === 0 ? 'Any year' : y}</option>`);
-        yearSel.innerHTML = '<option value="">— Choose year —</option>' + opts.join('');
+        const opts = years.map(y => `<option value="${y}">${y === 0 ? BIKES_I18N.anyYear : y}</option>`);
+        yearSel.innerHTML = '<option value="">' + BIKES_I18N.chooseYear + '</option>' + opts.join('');
         yearSel.disabled = false;
     });
 

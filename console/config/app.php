@@ -97,6 +97,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Available Application Locales
+    |--------------------------------------------------------------------------
+    |
+    | Whitelist of locales the application supports. The Localization
+    | middleware uses this to validate the locale resolved from the URL,
+    | session, cookie, or IP geo-lookup before applying it.
+    |
+    */
+
+    'available_locales' => ['en', 'ja', 'zh-TW'],
+
+    /*
+    |--------------------------------------------------------------------------
     | Faker Locale
     |--------------------------------------------------------------------------
     |

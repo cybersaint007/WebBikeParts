@@ -1,27 +1,27 @@
 @extends('layouts.master')
-@section('title', 'Parts')
+@section('title', __('Parts'))
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Crawler @endslot
-        @slot('title') Parts @endslot
+        @slot('li_1') {{ __('Crawler') }} @endslot
+        @slot('title') {{ __('Parts') }} @endslot
     @endcomponent
 
     <div class="alert alert-info d-flex align-items-center">
         <div class="flex-grow-1">
             @if ($scope['all_bikes'])
-                <strong>Showing parts for: all crawled bikes</strong>
+                <strong>{{ __('Showing parts for: all crawled bikes') }}</strong>
                 @if ($scope['my_bike_count'] > 0)
-                    — <a href="{{ route('parts.index', request()->except('all_bikes')) }}">Limit to my bikes</a>
+                    — <a href="{{ route('parts.index', request()->except('all_bikes')) }}">{{ __('Limit to my bikes') }}</a>
                 @endif
             @elseif ($scope['my_bike_count'] === 0)
-                <strong>You haven't added any bikes yet.</strong>
-                <a href="{{ route('my-bikes.index') }}">Add a bike</a> to start crawling, or
-                <a href="{{ route('parts.index', array_merge(request()->all(), ['all_bikes' => 1])) }}">browse all bikes</a>.
+                <strong>{{ __("You haven't added any bikes yet.") }}</strong>
+                <a href="{{ route('my-bikes.index') }}">{{ __('Add a bike') }}</a> {{ __('to start crawling, or') }}
+                <a href="{{ route('parts.index', array_merge(request()->all(), ['all_bikes' => 1])) }}">{{ __('browse all bikes') }}</a>.
             @else
-                <strong>Showing parts for: My Bikes ({{ $scope['my_bike_count'] }})</strong>
+                <strong>{{ __('Showing parts for: My Bikes (:count)', ['count' => $scope['my_bike_count']]) }}</strong>
                 <span class="text-muted">— {{ implode(', ', $scope['my_bike_labels']) }}</span>
-                — <a href="{{ route('parts.index', array_merge(request()->all(), ['all_bikes' => 1])) }}">Show all bikes</a>
+                — <a href="{{ route('parts.index', array_merge(request()->all(), ['all_bikes' => 1])) }}">{{ __('Show all bikes') }}</a>
             @endif
         </div>
     </div>
@@ -32,8 +32,8 @@
             <div class="card">
                 <div class="card-header">
                     <div class="d-flex align-items-center">
-                        <h5 class="fs-16 flex-grow-1 mb-0">Filters</h5>
-                        <a href="{{ route('parts.index') }}" class="text-decoration-underline">Clear all</a>
+                        <h5 class="fs-16 flex-grow-1 mb-0">{{ __('Filters') }}</h5>
+                        <a href="{{ route('parts.index') }}" class="text-decoration-underline">{{ __('Clear all') }}</a>
                     </div>
                 </div>
 
@@ -43,15 +43,15 @@
                             <input type="hidden" name="all_bikes" value="1">
                         @endif
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Search</label>
+                            <label class="form-label fw-medium">{{ __('Search') }}</label>
                             <input type="search" name="q" value="{{ request('q') }}" class="form-control"
-                                   placeholder="Title, part #, fitment…">
+                                   placeholder="{{ __('Title, part #, fitment…') }}">
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Bike</label>
+                            <label class="form-label fw-medium">{{ __('Bike') }}</label>
                             <select name="bike" class="form-select">
-                                <option value="">{{ $scope['all_bikes'] ? 'All bikes' : 'All my bikes' }}</option>
+                                <option value="">{{ $scope['all_bikes'] ? __('All bikes') : __('All my bikes') }}</option>
                                 @foreach ($facets['bikes'] as $bike)
                                     <option value="{{ $bike['key'] }}" @selected(request('bike') === $bike['key'])>{{ $bike['label'] }}</option>
                                 @endforeach
@@ -59,9 +59,9 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Category</label>
+                            <label class="form-label fw-medium">{{ __('Category') }}</label>
                             <select name="category" id="parts-filter-category" class="form-select">
-                                <option value="">All categories</option>
+                                <option value="">{{ __('All categories') }}</option>
                                 @foreach ($facets['categories'] as $cat)
                                     <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ ucfirst($cat) }}</option>
                                 @endforeach
@@ -69,9 +69,9 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Subcategory</label>
+                            <label class="form-label fw-medium">{{ __('Subcategory') }}</label>
                             <select name="subcategory" id="parts-filter-subcategory" class="form-select">
-                                <option value="">All subcategories</option>
+                                <option value="">{{ __('All subcategories') }}</option>
                                 @foreach ($facets['subcategories'] as $sub)
                                     @php
                                         $parent = explode('-', $sub, 2)[0];
@@ -85,9 +85,9 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Source</label>
+                            <label class="form-label fw-medium">{{ __('Source') }}</label>
                             <select name="source" class="form-select">
-                                <option value="">All sources</option>
+                                <option value="">{{ __('All sources') }}</option>
                                 @foreach ($facets['sources'] as $src)
                                     <option value="{{ $src }}" @selected(request('source') === $src)>{{ $src }}</option>
                                 @endforeach
@@ -95,9 +95,9 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Condition</label>
+                            <label class="form-label fw-medium">{{ __('Condition') }}</label>
                             <select name="condition" class="form-select">
-                                <option value="">Any condition</option>
+                                <option value="">{{ __('Any condition') }}</option>
                                 @foreach ($facets['conditions'] as $cond)
                                     <option value="{{ $cond }}" @selected(request('condition') === $cond)>{{ $cond }}</option>
                                 @endforeach
@@ -105,16 +105,16 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Price range</label>
+                            <label class="form-label fw-medium">{{ __('Price range') }}</label>
                             <div class="d-flex gap-2">
                                 <input type="number" step="0.01" name="price_min" value="{{ request('price_min') }}"
-                                       class="form-control" placeholder="Min">
+                                       class="form-control" placeholder="{{ __('Min') }}">
                                 <input type="number" step="0.01" name="price_max" value="{{ request('price_max') }}"
-                                       class="form-control" placeholder="Max">
+                                       class="form-control" placeholder="{{ __('Max') }}">
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100">Apply filters</button>
+                        <button type="submit" class="btn btn-primary w-100">{{ __('Apply filters') }}</button>
                     </form>
                 </div>
             </div>
@@ -127,11 +127,14 @@
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <input id="parts-q" type="search" class="form-control flex-grow-1"
                                style="max-width:380px"
-                               placeholder="Instant search: title, part #, fitment…"
+                               placeholder="{{ __('Instant search: title, part #, fitment…') }}"
                                value="{{ request('q') }}">
                         <h5 class="card-title mb-0 ms-auto" id="parts-result-count">
-                            Showing {{ $listings->firstItem() ?? 0 }}–{{ $listings->lastItem() ?? 0 }}
-                            of {{ $listings->total() }} parts
+                            {{ __('Showing :first–:last of :total parts', [
+                                'first' => $listings->firstItem() ?? 0,
+                                'last'  => $listings->lastItem() ?? 0,
+                                'total' => $listings->total(),
+                            ]) }}
                         </h5>
                     </div>
                 </div>
@@ -139,14 +142,14 @@
                 <div class="card-body" id="parts-grid-container">
                     @if ($listings->isEmpty())
                         <div class="text-center py-5" id="parts-empty-state">
-                            <h5 class="text-muted">No cached matches.</h5>
+                            <h5 class="text-muted">{{ __('No cached matches.') }}</h5>
                             <p class="text-muted">
-                                Try clearing filters, or run a live search across eBay / Webike now.
+                                {{ __('Try clearing filters, or run a live search across eBay / Webike now.') }}
                             </p>
                             <button type="button" class="btn btn-primary" id="live-search-btn" disabled>
-                                <i class="ri-search-eye-line me-1"></i> Search live sources
+                                <i class="ri-search-eye-line me-1"></i> {{ __('Search live sources') }}
                             </button>
-                            <p class="text-muted fs-13 mt-2">Type a query in the search box above first.</p>
+                            <p class="text-muted fs-13 mt-2">{{ __('Type a query in the search box above first.') }}</p>
                         </div>
                     @else
                         <div class="row" id="parts-grid">
@@ -192,8 +195,8 @@
                                                     }
                                                 @endphp
                                                 @if ($watched)
-                                                    <span class="badge bg-warning-subtle text-warning" title="Matches an active watch">
-                                                        ★ Watched
+                                                    <span class="badge bg-warning-subtle text-warning" title="{{ __('Matches an active watch') }}">
+                                                        ★ {{ __('Watched') }}
                                                     </span>
                                                 @endif
                                             </div>
@@ -203,17 +206,17 @@
                                                         {{ number_format((float) $l->price_amount, 2) }}
                                                         <small class="text-muted fs-13">{{ $l->price_currency }}</small>
                                                     @else
-                                                        <span class="text-muted fs-14">Price n/a</span>
+                                                        <span class="text-muted fs-14">{{ __('Price n/a') }}</span>
                                                     @endif
                                                 </h5>
                                             </div>
                                             <a href="{{ $l->url }}" target="_blank" rel="noopener noreferrer"
                                                class="btn btn-sm btn-outline-primary w-100">
-                                                View on {{ $l->source_name }}
+                                                {{ __('View on :source', ['source' => $l->source_name]) }}
                                                 <i class="ri-external-link-line ms-1"></i>
                                             </a>
                                             <p class="text-muted fs-12 mt-2 mb-0">
-                                                Last seen {{ $l->last_seen_at?->diffForHumans() }}
+                                                {{ __('Last seen :time', ['time' => $l->last_seen_at?->diffForHumans()]) }}
                                             </p>
                                         </div>
                                     </div>
@@ -232,7 +235,23 @@
 @endsection
 
 @section('script')
+@php
+    $partsI18n = [
+        'priceNa'         => __('Price n/a'),
+        'noMatchesFor'    => __('No cached matches for ":query".'),
+        'liveSearchBlurb' => __("Run a live search across eBay / Webike now and we'll save it to your watch list."),
+        'searchLive'      => __('Search live sources'),
+        'searchingLive'   => __('Searching live sources…'),
+        'liveFailed'      => __('Live search failed'),
+        'lastSeen'        => __('Last seen :time'),
+        'viewOn'          => __('View on :source'),
+        'countParts'      => __(':count parts', ['count' => 0]),
+        'showingRange'    => __('Showing :first–:last of :total parts'),
+    ];
+@endphp
 <script>
+const PARTS_I18N = @json($partsI18n);
+
 (function () {
     const qInput  = document.getElementById('parts-q');
     const grid    = document.getElementById('parts-grid');
@@ -256,7 +275,7 @@
         const catBadge = (l.category && l.category !== 'unknown') ? `<span class="badge bg-secondary-subtle text-secondary">${escapeHtml(l.category)}</span>` : '';
         const price = (l.price_amount !== null && l.price_amount !== undefined)
             ? `${Number(l.price_amount).toFixed(2)} <small class="text-muted fs-13">${escapeHtml(l.price_currency || '')}</small>`
-            : `<span class="text-muted fs-14">Price n/a</span>`;
+            : `<span class="text-muted fs-14">${escapeHtml(PARTS_I18N.priceNa)}</span>`;
         return `
         <div class="col-xl-4 col-md-6">
             <div class="card h-100 shadow-none border">
@@ -272,21 +291,22 @@
                     </div>
                     <h5 class="mb-3">${price}</h5>
                     <a href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary w-100">
-                        View on ${escapeHtml(l.source_name)} <i class="ri-external-link-line ms-1"></i>
+                        ${escapeHtml(PARTS_I18N.viewOn.replace(':source', l.source_name))} <i class="ri-external-link-line ms-1"></i>
                     </a>
-                    <p class="text-muted fs-12 mt-2 mb-0">Last seen ${escapeHtml(l.last_seen_human || '')}</p>
+                    <p class="text-muted fs-12 mt-2 mb-0">${escapeHtml(PARTS_I18N.lastSeen.replace(':time', l.last_seen_human || ''))}</p>
                 </div>
             </div>
         </div>`;
     }
 
     function renderEmpty(q) {
+        const headline = PARTS_I18N.noMatchesFor.replace(':query', q);
         return `
         <div class="text-center py-5" id="parts-empty-state">
-            <h5 class="text-muted">No cached matches for "${escapeHtml(q)}".</h5>
-            <p class="text-muted">Run a live search across eBay / Webike now and we'll save it to your watch list.</p>
+            <h5 class="text-muted">${escapeHtml(headline)}</h5>
+            <p class="text-muted">${escapeHtml(PARTS_I18N.liveSearchBlurb)}</p>
             <button type="button" class="btn btn-primary" id="live-search-btn">
-                <i class="ri-search-eye-line me-1"></i> Search live sources
+                <i class="ri-search-eye-line me-1"></i> ${escapeHtml(PARTS_I18N.searchLive)}
             </button>
         </div>`;
     }
@@ -312,8 +332,11 @@
             const data = await r.json();
 
             counter.textContent = data.total === 0
-                ? '0 parts'
-                : `Showing ${data.pagination.first_item}–${data.pagination.last_item} of ${data.total} parts`;
+                ? PARTS_I18N.countParts.replace('0', '0')
+                : PARTS_I18N.showingRange
+                    .replace(':first', data.pagination.first_item)
+                    .replace(':last', data.pagination.last_item)
+                    .replace(':total', data.total);
 
             if (data.total === 0) {
                 grid_c.innerHTML = renderEmpty(q);
@@ -349,7 +372,7 @@
         if (!q) return;
         const btn = document.getElementById('live-search-btn');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Searching live sources…';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> ' + escapeHtml(PARTS_I18N.searchingLive);
 
         const formData = new FormData();
         formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}');
@@ -360,7 +383,7 @@
             body: formData,
         });
         if (!r.ok) {
-            btn.innerHTML = 'Live search failed';
+            btn.innerHTML = escapeHtml(PARTS_I18N.liveFailed);
             return;
         }
         const data = await r.json();
@@ -372,7 +395,7 @@
                 const s = await sr.json();
                 if (s.status === 'success' || s.status === 'failed') {
                     runSearch(qInput.value.trim());
-                    btn.innerHTML = '<i class="ri-search-eye-line me-1"></i> Search live sources';
+                    btn.innerHTML = '<i class="ri-search-eye-line me-1"></i> ' + escapeHtml(PARTS_I18N.searchLive);
                     btn.disabled = !qInput.value.trim();
                 } else {
                     setTimeout(tick, 3000);

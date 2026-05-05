@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1')
-            <a href="{{ route('parts.index') }}">Parts</a>
+            <a href="{{ route('parts.index') }}">{{ __('Parts') }}</a>
         @endslot
         @slot('title') {{ \Illuminate\Support\Str::limit($listing->title, 60) }} @endslot
     @endcomponent
@@ -38,7 +38,7 @@
                         @if ($listing->category && $listing->category !== 'unknown')
                             <span class="badge bg-secondary-subtle text-secondary">{{ $listing->category }}</span>
                         @endif
-                        <span class="badge bg-warning-subtle text-warning">bike: {{ $listing->bike_key }}</span>
+                        <span class="badge bg-warning-subtle text-warning">{{ __('bike: :key', ['key' => $listing->bike_key]) }}</span>
                     </div>
 
                     <h2 class="mb-4">
@@ -46,31 +46,31 @@
                             {{ number_format((float) $listing->price_amount, 2) }}
                             <small class="text-muted fs-16">{{ $listing->price_currency }}</small>
                             @if ($listing->shipping_amount)
-                                <small class="text-muted fs-13 d-block">+ {{ number_format((float) $listing->shipping_amount, 2) }} shipping</small>
+                                <small class="text-muted fs-13 d-block">+ {{ number_format((float) $listing->shipping_amount, 2) }} {{ __('shipping') }}</small>
                             @endif
                         @else
-                            <span class="text-muted fs-18">Price not available</span>
+                            <span class="text-muted fs-18">{{ __('Price not available') }}</span>
                         @endif
                     </h2>
 
                     <a href="{{ $listing->url }}" target="_blank" rel="noopener noreferrer"
                        class="btn btn-primary btn-lg mb-4">
-                        View on {{ $listing->source_name }}
+                        {{ __('View on :source', ['source' => $listing->source_name]) }}
                         <i class="ri-external-link-line ms-1"></i>
                     </a>
 
                     <dl class="row mb-0">
                         @if ($listing->seller_name)
-                            <dt class="col-sm-3 text-muted">Seller</dt>
+                            <dt class="col-sm-3 text-muted">{{ __('Seller') }}</dt>
                             <dd class="col-sm-9">{{ $listing->seller_name }}{{ $listing->seller_country ? ' · ' . $listing->seller_country : '' }}</dd>
                         @endif
                         @if ($listing->part_number)
-                            <dt class="col-sm-3 text-muted">Part #</dt>
+                            <dt class="col-sm-3 text-muted">{{ __('Part #') }}</dt>
                             <dd class="col-sm-9"><code>{{ $listing->part_number }}</code></dd>
                         @endif
-                        <dt class="col-sm-3 text-muted">First seen</dt>
+                        <dt class="col-sm-3 text-muted">{{ __('First seen') }}</dt>
                         <dd class="col-sm-9">{{ $listing->first_seen_at?->format('Y-m-d H:i') }}</dd>
-                        <dt class="col-sm-3 text-muted">Last seen</dt>
+                        <dt class="col-sm-3 text-muted">{{ __('Last seen') }}</dt>
                         <dd class="col-sm-9">{{ $listing->last_seen_at?->format('Y-m-d H:i') }} ({{ $listing->last_seen_at?->diffForHumans() }})</dd>
                     </dl>
                 </div>
@@ -80,24 +80,24 @@
 
     @if ($listing->description)
         <div class="card">
-            <div class="card-header"><h5 class="mb-0">Description</h5></div>
+            <div class="card-header"><h5 class="mb-0">{{ __('Description') }}</h5></div>
             <div class="card-body" style="white-space:pre-wrap;">{{ $listing->description }}</div>
         </div>
     @endif
 
     @if ($listing->fitment_text)
         <div class="card">
-            <div class="card-header"><h5 class="mb-0">Fitment</h5></div>
+            <div class="card-header"><h5 class="mb-0">{{ __('Fitment') }}</h5></div>
             <div class="card-body" style="white-space:pre-wrap;">{{ $listing->fitment_text }}</div>
         </div>
     @endif
 
     @if ($listing->snapshots->isNotEmpty())
         <div class="card">
-            <div class="card-header"><h5 class="mb-0">Price history</h5></div>
+            <div class="card-header"><h5 class="mb-0">{{ __('Price history') }}</h5></div>
             <div class="card-body p-0">
                 <table class="table mb-0">
-                    <thead><tr><th>Checked</th><th class="text-end">Price</th><th>Availability</th></tr></thead>
+                    <thead><tr><th>{{ __('Checked') }}</th><th class="text-end">{{ __('Price') }}</th><th>{{ __('Availability') }}</th></tr></thead>
                     <tbody>
                     @foreach ($listing->snapshots as $s)
                         <tr>

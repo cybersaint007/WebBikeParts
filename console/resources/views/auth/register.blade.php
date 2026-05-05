@@ -40,72 +40,72 @@
 
                             <div class="card-body p-4">
                                 <div class="text-center mt-2">
-                                    <h5 class="text-primary">Create New Account</h5>
-                                    <p class="text-muted">Get your free velzon account now</p>
+                                    <h5 class="text-primary">{{ __('Create New Account') }}</h5>
+                                    <p class="text-muted">{{ __('Get your free account now') }}</p>
                                 </div>
                                 <div class="p-2 mt-4">
                                     <form class="needs-validation" novalidate method="POST"
                                         action="{{ route('register') }}" enctype="multipart/form-data">
                                         @csrf
                                         <div class="mb-3">
-                                            <label for="useremail" class="form-label">Email <span
+                                            <label for="useremail" class="form-label">{{ __('Email') }} <span
                                                     class="text-danger">*</span></label>
                                             <input type="email" class="form-control @error('email') is-invalid @enderror"
                                                 name="email" value="{{ old('email') }}" id="useremail"
-                                                placeholder="Enter email address" required>
+                                                placeholder="{{ __('Enter email address') }}" required>
                                             @error('email')
                                                 <span class="invalid-feedback" role="alert">
                                                     <strong>{{ $message }}</strong>
                                                 </span>
                                             @enderror
                                             <div class="invalid-feedback">
-                                                Please enter email
+                                                {{ __('Please enter email') }}
                                             </div>
                                         </div>
                                         <div class="mb-3">
-                                            <label for="username" class="form-label">Username <span
+                                            <label for="username" class="form-label">{{ __('Username') }} <span
                                                     class="text-danger">*</span></label>
                                             <input type="text" class="form-control @error('name') is-invalid @enderror"
                                                 name="name" value="{{ old('name') }}" id="username"
-                                                placeholder="Enter username" required>
+                                                placeholder="{{ __('Enter username') }}" required>
                                             @error('name')
                                                 <span class="invalid-feedback" role="alert">
                                                     <strong>{{ $message }}</strong>
                                                 </span>
                                             @enderror
                                             <div class="invalid-feedback">
-                                                Please enter username
+                                                {{ __('Please enter username') }}
                                             </div>
                                         </div>
 
                                         <div class="mb-3">
-                                            <label for="userpassword" class="form-label">Password <span
+                                            <label for="userpassword" class="form-label">{{ __('Password') }} <span
                                                     class="text-danger">*</span></label>
                                             <input type="password"
                                                 class="form-control @error('password') is-invalid @enderror" name="password"
-                                                id="userpassword" placeholder="Enter password" required>
+                                                id="userpassword" placeholder="{{ __('Enter password') }}" required>
                                             @error('password')
                                                 <span class="invalid-feedback" role="alert">
                                                     <strong>{{ $message }}</strong>
                                                 </span>
                                             @enderror
                                             <div class="invalid-feedback">
-                                                Please enter password
+                                                {{ __('Please enter password') }}
                                             </div>
                                         </div>
                                         <div class="mb-3">
-                                            <label for="input-password">Confirm Password <span class="text-danger">*</span></label>
+                                            <label for="input-password">{{ __('Confirm Password') }} <span class="text-danger">*</span></label>
                                             <input type="password"
                                                 class="form-control @error('password_confirmation') is-invalid @enderror"
                                                 name="password_confirmation" id="input-password"
-                                                placeholder="Enter Confirm Password" required>
+                                                placeholder="{{ __('Enter confirm password') }}" required>
 
                                             <div class="form-floating-icon">
                                                 <i data-feather="lock"></i>
                                             </div>
                                         </div>
                                         <div class="mb-3">
-                                            <label for="input-avatar">Avatar <span class="text-danger">*</span></label>
+                                            <label for="input-avatar">{{ __('Avatar') }} <span class="text-danger">*</span></label>
                                             <input type="file" class="form-control @error('avatar') is-invalid @enderror"
                                                 name="avatar" id="input-avatar" required>
                                             @error('avatar')
@@ -119,19 +119,18 @@
                                         </div>
 
                                         <div class="mb-3">
-                                            <p class="mb-0 fs-12 text-muted fst-italic">By registering you agree to the
-                                                Velzon <a href="#"
-                                                    class="text-primary text-decoration-underline fst-normal fw-medium">Terms
-                                                    of Use</a></p>
+                                            <p class="mb-0 fs-12 text-muted fst-italic">{{ __('By registering you agree to our') }}
+                                                <a href="#"
+                                                    class="text-primary text-decoration-underline fst-normal fw-medium">{{ __('Terms of Use') }}</a></p>
                                         </div>
 
                                         <div class="mt-3">
-                                            <button class="btn btn-success w-100" type="submit">Sign Up</button>
+                                            <button class="btn btn-success w-100" type="submit">{{ __('Sign Up') }}</button>
                                         </div>
 
                                         <div class="mt-3 text-center">
                                             <div class="signin-other-title">
-                                                <h5 class="fs-13 mb-4 title text-muted">Create account with</h5>
+                                                <h5 class="fs-13 mb-4 title text-muted">{{ __('Create account with') }}</h5>
                                             </div>
 
                                             <div>
@@ -158,8 +157,8 @@
                         <!-- end card -->
 
                         <div class="mt-4 text-center">
-                            <p class="mb-0">Already have an account ? <a href="{{ route('login') }}"
-                                    class="fw-semibold text-primary text-decoration-underline"> Signin </a> </p>
+                            <p class="mb-0">{{ __('Already have an account?') }} <a href="{{ route('login') }}"
+                                    class="fw-semibold text-primary text-decoration-underline"> {{ __('Sign In') }} </a> </p>
                         </div>
 
                     </div>

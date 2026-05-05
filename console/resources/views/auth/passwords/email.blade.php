@@ -40,8 +40,8 @@
 
                             <div class="card-body p-4">
                                 <div class="text-center mt-2">
-                                    <h5 class="text-primary">Forgot Password?</h5>
-                                    <p class="text-muted">Reset password with velzon</p>
+                                    <h5 class="text-primary">{{ __('Forgot Password?') }}</h5>
+                                    <p class="text-muted">{{ __('Reset password') }}</p>
 
                                     <lord-icon src="https://cdn.lordicon.com/rhvddzym.json" trigger="loop"
                                         colors="primary:#0ab39c" class="avatar-xl">
@@ -50,7 +50,7 @@
                                 </div>
 
                                 <div class="alert alert-borderless alert-warning text-center mb-2 mx-2" role="alert">
-                                    Enter your email and instructions will be sent to you!
+                                    {{ __('Enter your email and instructions will be sent to you!') }}
                                 </div>
                                 <div class="p-2">
                                     @if (session('status'))
@@ -61,9 +61,9 @@
                                     <form class="form-horizontal" method="POST" action="{{ route('password.email') }}">
                                         @csrf
                                         <div class="mb-3">
-                                            <label for="useremail" class="form-label">Email</label>
+                                            <label for="useremail" class="form-label">{{ __('Email') }}</label>
                                             <input type="email" class="form-control @error('email') is-invalid @enderror"
-                                                id="useremail" name="email" placeholder="Enter email"
+                                                id="useremail" name="email" placeholder="{{ __('Enter email') }}"
                                                 value="{{ old('email') }}" id="email">
                                             @error('email')
                                                 <span class="invalid-feedback" role="alert">
@@ -74,7 +74,7 @@
 
                                         <div class="text-end">
                                             <button class="btn btn-primary w-md waves-effect waves-light"
-                                                type="button">Reset</button>
+                                                type="button">{{ __('Reset') }}</button>
                                         </div>
 
                                     </form>
@@ -85,8 +85,8 @@
                         <!-- end card -->
 
                         <div class="mt-4 text-center">
-                            <p class="mb-0">Wait, I remember my password... <a href="{{ route('login') }}"
-                                    class="fw-semibold text-primary text-decoration-underline"> Click here </a> </p>
+                            <p class="mb-0">{{ __('Wait, I remember my password...') }} <a href="{{ route('login') }}"
+                                    class="fw-semibold text-primary text-decoration-underline"> {{ __('Click here') }} </a> </p>
                         </div>
 
                     </div>

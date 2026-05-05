@@ -1,30 +1,30 @@
 @extends('layouts.master')
-@section('title', 'Adapter Status')
+@section('title', __('Adapter Status'))
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Admin @endslot
-        @slot('title') Adapter Status @endslot
+        @slot('li_1') {{ __('Admin') }} @endslot
+        @slot('title') {{ __('Adapter Status') }} @endslot
     @endcomponent
 
     <div class="card" id="adapter-status-card"
          data-poll-url="{{ $pollUrl }}"
          data-poll-period="{{ $pollPeriod }}">
         <div class="card-header d-flex align-items-center gap-2 flex-wrap">
-            <h5 class="mb-0 flex-grow-1">Adapters</h5>
+            <h5 class="mb-0 flex-grow-1">{{ __('Adapters') }}</h5>
 
             <span class="text-muted fs-13">
-                Stuck threshold: <strong id="stale-mins">—</strong> min &middot;
-                Last update: <strong id="last-update">never</strong>
+                {{ __('Stuck threshold:') }} <strong id="stale-mins">—</strong> {{ __('min') }} &middot;
+                {{ __('Last update:') }} <strong id="last-update">{{ __('never') }}</strong>
             </span>
 
             <div class="form-check form-switch ms-2">
                 <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
-                <label class="form-check-label" for="auto-refresh">Auto-refresh</label>
+                <label class="form-check-label" for="auto-refresh">{{ __('Auto-refresh') }}</label>
             </div>
 
             <button type="button" id="refresh-now" class="btn btn-sm btn-outline-primary">
-                <i class="ri-refresh-line"></i> Refresh
+                <i class="ri-refresh-line"></i> {{ __('Refresh') }}
             </button>
         </div>
 
@@ -33,24 +33,24 @@
                 <table class="table align-middle mb-0" id="adapter-status-table">
                     <thead class="table-light">
                         <tr>
-                            <th>Adapter</th>
-                            <th>Health</th>
-                            <th>Enabled</th>
-                            <th class="text-end">Pending</th>
-                            <th class="text-end">Running</th>
-                            <th class="text-end">Completed</th>
-                            <th class="text-end">Failed</th>
-                            <th class="text-end">Stuck</th>
-                            <th class="text-end">Ingested</th>
-                            <th>Last completed</th>
-                            <th>Last error</th>
+                            <th>{{ __('Adapter') }}</th>
+                            <th>{{ __('Health') }}</th>
+                            <th>{{ __('Enabled') }}</th>
+                            <th class="text-end">{{ __('Pending') }}</th>
+                            <th class="text-end">{{ __('Running') }}</th>
+                            <th class="text-end">{{ __('Completed') }}</th>
+                            <th class="text-end">{{ __('Failed') }}</th>
+                            <th class="text-end">{{ __('Stuck') }}</th>
+                            <th class="text-end">{{ __('Ingested') }}</th>
+                            <th>{{ __('Last completed') }}</th>
+                            <th>{{ __('Last error') }}</th>
                         </tr>
                     </thead>
                     <tbody id="adapter-status-rows">
                         <tr>
                             <td colspan="11" class="text-center text-muted p-4">
                                 <div class="spinner-border spinner-border-sm me-2"></div>
-                                Loading adapter status…
+                                {{ __('Loading adapter status…') }}
                             </td>
                         </tr>
                     </tbody>
@@ -60,14 +60,30 @@
 
         <div class="card-footer">
             <small class="text-muted">
-                Counts come from <code>watcher.crawl_jobs</code>; "Stuck" = jobs in <code>running</code>
-                whose <code>locked_at</code> is older than the stuck threshold.
-                "Disabled" health means <code>watcher.sources.enabled = false</code>.
+                {!! __(
+                    'Counts come from :code; "Stuck" = jobs in :running whose :locked is older than the stuck threshold. "Disabled" health means :flag.',
+                    [
+                        'code'    => '<code>watcher.crawl_jobs</code>',
+                        'running' => '<code>running</code>',
+                        'locked'  => '<code>locked_at</code>',
+                        'flag'    => '<code>watcher.sources.enabled = false</code>',
+                    ]
+                ) !!}
             </small>
         </div>
     </div>
 
+@php
+    $adaptersI18n = [
+        'noSourceRow' => __('no source row'),
+        'on'          => __('on'),
+        'off'         => __('off'),
+        'noAdapters'  => __('No adapters reported.'),
+    ];
+@endphp
 <script>
+const ADAPTERS_I18N = @json($adaptersI18n);
+
 (function () {
     const card = document.getElementById('adapter-status-card');
     const url = card.dataset.pollUrl;
@@ -113,17 +129,17 @@
         updatedEl.textContent = new Date(payload.fetched_at).toLocaleTimeString();
 
         if (!payload.adapters || payload.adapters.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted p-4">No adapters reported.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted p-4">' + escapeHtml(ADAPTERS_I18N.noAdapters) + '</td></tr>';
             return;
         }
 
         const rows = payload.adapters.map(a => {
             const cls = HEALTH_CLASS[a.health] || HEALTH_CLASS.unknown;
             const enabledBadge = a.enabled === null
-                ? '<span class="badge bg-light text-muted">no source row</span>'
+                ? '<span class="badge bg-light text-muted">' + escapeHtml(ADAPTERS_I18N.noSourceRow) + '</span>'
                 : (a.enabled
-                    ? '<span class="badge bg-success-subtle text-success">on</span>'
-                    : '<span class="badge bg-secondary-subtle text-secondary">off</span>');
+                    ? '<span class="badge bg-success-subtle text-success">' + escapeHtml(ADAPTERS_I18N.on) + '</span>'
+                    : '<span class="badge bg-secondary-subtle text-secondary">' + escapeHtml(ADAPTERS_I18N.off) + '</span>');
 
             const errCell = a.last_error
                 ? `<span class="text-danger" title="${escapeHtml(a.last_error)}">${escapeHtml(a.last_error.split('\n')[0].slice(0, 80))}</span>

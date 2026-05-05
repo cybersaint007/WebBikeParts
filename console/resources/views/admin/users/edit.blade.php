@@ -1,16 +1,16 @@
 @extends('layouts.master')
-@section('title', 'Edit user')
+@section('title', __('Edit user'))
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') <a href="{{ route('admin.users.index') }}">Users</a> @endslot
-        @slot('title') Edit {{ $user->email }} @endslot
+        @slot('li_1') <a href="{{ route('admin.users.index') }}">{{ __('Users') }}</a> @endslot
+        @slot('title') {{ __('Edit') }} {{ $user->email }} @endslot
     @endcomponent
 
     <div class="row justify-content-center">
         <div class="col-lg-6">
             <div class="card">
-                <div class="card-header"><h5 class="mb-0">Edit user</h5></div>
+                <div class="card-header"><h5 class="mb-0">{{ __('Edit user') }}</h5></div>
                 <div class="card-body">
                     @include('admin.users._form')
                 </div>

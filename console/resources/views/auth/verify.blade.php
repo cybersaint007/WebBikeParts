@@ -48,15 +48,15 @@
 
                                     <div class="p-2 mt-4">
                                         <div class="text-muted text-center mb-4 mx-lg-3">
-                                            <h4 class="">Verify Your Email</h4>
-                                            <p>Please enter the 4 digit code sent to <span class="fw-semibold">example@abc.com</span></p>
+                                            <h4 class="">{{ __('Verify Your Email') }}</h4>
+                                            <p>{{ __('Please enter the 4 digit code sent to') }} <span class="fw-semibold">example@abc.com</span></p>
                                         </div>
 
                                         <form>
                                             <div class="row">
                                                 <div class="col-3">
                                                     <div class="mb-3">
-                                                        <label for="digit1-input" class="visually-hidden">Dight 1</label>
+                                                        <label for="digit1-input" class="visually-hidden">{{ __('Digit 1') }}</label>
                                                         <input type="text"
                                                             class="form-control form-control-lg bg-light border-light text-center"
                                                             onkeyup="moveToNext(this, 2)" maxLength="1"
@@ -66,7 +66,7 @@
 
                                                 <div class="col-3">
                                                     <div class="mb-3">
-                                                        <label for="digit2-input" class="visually-hidden">Dight 2</label>
+                                                        <label for="digit2-input" class="visually-hidden">{{ __('Digit 2') }}</label>
                                                         <input type="text"
                                                             class="form-control form-control-lg bg-light border-light text-center"
                                                             onkeyup="moveToNext(this, 3)" maxLength="1"
@@ -76,7 +76,7 @@
 
                                                 <div class="col-3">
                                                     <div class="mb-3">
-                                                        <label for="digit3-input" class="visually-hidden">Dight 3</label>
+                                                        <label for="digit3-input" class="visually-hidden">{{ __('Digit 3') }}</label>
                                                         <input type="text"
                                                             class="form-control form-control-lg bg-light border-light text-center"
                                                             onkeyup="moveToNext(this, 4)" maxLength="1"
@@ -86,7 +86,7 @@
 
                                                 <div class="col-3">
                                                     <div class="mb-3">
-                                                        <label for="digit4-input" class="visually-hidden">Dight 4</label>
+                                                        <label for="digit4-input" class="visually-hidden">{{ __('Digit 4') }}</label>
                                                         <input type="text"                          class="form-control form-control-lg bg-light border-light text-center"
                                                             onkeyup="moveToNext(this, 4)" maxLength="1"
                                                             id="digit4-input">
@@ -96,7 +96,7 @@
                                         </form><!-- end form -->
 
                                         <div class="mt-3">
-                                            <button type="button" class="btn btn-success w-100">Confirm</button>
+                                            <button type="button" class="btn btn-success w-100">{{ __('Confirm') }}</button>
                                         </div>
                                     </div>
                                 </div>
@@ -105,7 +105,7 @@
                             <!-- end card -->
 
                             <div class="mt-4 text-center">
-                                <p class="mb-0">Didn't receive a code ? <a href="auth-pass-reset-basic" class="fw-semibold text-primary text-decoration-underline">Resend</a> </p>
+                                <p class="mb-0">{{ __("Didn't receive a code?") }} <a href="auth-pass-reset-basic" class="fw-semibold text-primary text-decoration-underline">{{ __('Resend') }}</a> </p>
                             </div>
 
                         </div>
