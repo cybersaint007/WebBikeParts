@@ -39,6 +39,9 @@
 
                 <div class="card-body">
                     <form method="GET" action="{{ route('parts.index') }}">
+                        @if ($scope['all_bikes'])
+                            <input type="hidden" name="all_bikes" value="1">
+                        @endif
                         <div class="mb-3">
                             <label class="form-label fw-medium">Search</label>
                             <input type="search" name="q" value="{{ request('q') }}" class="form-control"
@@ -46,11 +49,37 @@
                         </div>
 
                         <div class="mb-3">
+                            <label class="form-label fw-medium">Bike</label>
+                            <select name="bike" class="form-select">
+                                <option value="">{{ $scope['all_bikes'] ? 'All bikes' : 'All my bikes' }}</option>
+                                @foreach ($facets['bikes'] as $bike)
+                                    <option value="{{ $bike['key'] }}" @selected(request('bike') === $bike['key'])>{{ $bike['label'] }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label fw-medium">Category</label>
-                            <select name="category" class="form-select">
+                            <select name="category" id="parts-filter-category" class="form-select">
                                 <option value="">All categories</option>
                                 @foreach ($facets['categories'] as $cat)
-                                    <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ $cat }}</option>
+                                    <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ ucfirst($cat) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-medium">Subcategory</label>
+                            <select name="subcategory" id="parts-filter-subcategory" class="form-select">
+                                <option value="">All subcategories</option>
+                                @foreach ($facets['subcategories'] as $sub)
+                                    @php
+                                        $parent = explode('-', $sub, 2)[0];
+                                        $label  = str_replace('-', ' ', \Illuminate\Support\Str::after($sub, $parent . '-'));
+                                        $label  = $label === '' ? $sub : ucwords($label);
+                                    @endphp
+                                    <option value="{{ $sub }}" data-parent="{{ $parent }}"
+                                            @selected(request('subcategory') === $sub)>{{ $label }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -354,6 +383,27 @@
     }
 
     attachLiveBtn();
+
+    // Keep the Subcategory dropdown in sync with the selected Category.
+    // Subcategory slugs are `<category>-<sub>`, so we filter by data-parent.
+    const catSelect = document.getElementById('parts-filter-category');
+    const subSelect = document.getElementById('parts-filter-subcategory');
+    if (catSelect && subSelect) {
+        const syncSubOptions = (resetIfMismatched) => {
+            const cat = catSelect.value;
+            let currentStillVisible = false;
+            for (const opt of subSelect.options) {
+                if (!opt.value) { opt.hidden = false; continue; }
+                const parent = opt.dataset.parent || '';
+                const visible = !cat || parent === cat;
+                opt.hidden = !visible;
+                if (visible && opt.value === subSelect.value) currentStillVisible = true;
+            }
+            if (resetIfMismatched && !currentStillVisible) subSelect.value = '';
+        };
+        syncSubOptions(false);
+        catSelect.addEventListener('change', () => syncSubOptions(true));
+    }
 })();
 </script>
 @endsection

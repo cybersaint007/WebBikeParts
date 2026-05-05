@@ -24,15 +24,19 @@ class PartsController extends Controller
         $myCatalogIds = $user->selectedCatalogBikeIds();
         $myBikeKeys = BikeCatalog::query()->whereIn('id', $myCatalogIds)->pluck('catalog_key')->all();
         $allBikes = $request->boolean('all_bikes');
+        $selectedBike = $request->input('bike') ?: null;
 
         $query = Listing::query()
             ->category($request->input('category'))
+            ->subcategory($request->input('subcategory'))
             ->source($request->input('source'))
             ->condition($request->input('condition'))
             ->priceBetween($request->input('price_min'), $request->input('price_max'))
             ->search($request->input('q'));
 
-        if (!$allBikes) {
+        if ($selectedBike) {
+            $query->forBikeKeys([$selectedBike]);
+        } elseif (!$allBikes) {
             $query->forBikeKeys($myBikeKeys);
         }
 
@@ -45,10 +49,33 @@ class PartsController extends Controller
             ->mapWithKeys(fn ($c) => [$c->catalog_key => $c->displayLabel()])
             ->all();
 
+        $bikeOptionQuery = BikeCatalog::query();
+        if ($allBikes) {
+            $bikeOptionQuery->whereIn('catalog_key', Listing::query()->select('bike_key')->distinct());
+        } else {
+            $bikeOptionQuery->whereIn('id', $myCatalogIds);
+        }
+        $bikeOptions = $bikeOptionQuery
+            ->orderBy('make')->orderBy('model')->orderBy('year_start')
+            ->get()
+            ->map(fn ($c) => ['key' => $c->catalog_key, 'label' => $c->displayLabel()])
+            ->values()
+            ->all();
+
+        // Preserve the currently-selected bike in the dropdown even if scope changed.
+        if ($selectedBike && !collect($bikeOptions)->contains('key', $selectedBike)) {
+            $fallback = BikeCatalog::query()->where('catalog_key', $selectedBike)->first();
+            if ($fallback) {
+                array_unshift($bikeOptions, ['key' => $fallback->catalog_key, 'label' => $fallback->displayLabel()]);
+            }
+        }
+
         $facets = [
-            'categories' => Listing::query()->select('category')->distinct()->orderBy('category')->pluck('category'),
-            'sources'    => Listing::query()->select('source_name')->distinct()->orderBy('source_name')->pluck('source_name'),
-            'conditions' => Listing::query()->select('condition')->whereNotNull('condition')->distinct()->orderBy('condition')->pluck('condition'),
+            'categories'    => Listing::query()->select('category')->distinct()->orderBy('category')->pluck('category'),
+            'subcategories' => Listing::query()->select('subcategory')->whereNotNull('subcategory')->distinct()->orderBy('subcategory')->pluck('subcategory'),
+            'sources'       => Listing::query()->select('source_name')->distinct()->orderBy('source_name')->pluck('source_name'),
+            'conditions'    => Listing::query()->select('condition')->whereNotNull('condition')->distinct()->orderBy('condition')->pluck('condition'),
+            'bikes'         => $bikeOptions,
         ];
 
         $scope = [
@@ -82,15 +109,19 @@ class PartsController extends Controller
         $myCatalogIds = $user->selectedCatalogBikeIds();
         $myBikeKeys = BikeCatalog::query()->whereIn('id', $myCatalogIds)->pluck('catalog_key')->all();
         $allBikes = $request->boolean('all_bikes');
+        $selectedBike = $request->input('bike') ?: null;
 
         $query = Listing::query()
             ->category($request->input('category'))
+            ->subcategory($request->input('subcategory'))
             ->source($request->input('source'))
             ->condition($request->input('condition'))
             ->priceBetween($request->input('price_min'), $request->input('price_max'))
             ->search($request->input('q'));
 
-        if (!$allBikes) {
+        if ($selectedBike) {
+            $query->forBikeKeys([$selectedBike]);
+        } elseif (!$allBikes) {
             $query->forBikeKeys($myBikeKeys);
         }
 

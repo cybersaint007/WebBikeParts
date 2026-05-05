@@ -35,6 +35,11 @@ class Listing extends Model
         return $category ? $q->where('category', $category) : $q;
     }
 
+    public function scopeSubcategory(Builder $q, ?string $subcategory): Builder
+    {
+        return $subcategory ? $q->where('subcategory', $subcategory) : $q;
+    }
+
     public function scopeSource(Builder $q, ?string $source): Builder
     {
         return $source ? $q->where('source_name', $source) : $q;
