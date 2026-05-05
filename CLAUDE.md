@@ -72,7 +72,7 @@ The producer and worker are decoupled by the queue so workers can run on geo-dis
 - **`services/crawl.py`** — split into:
   - `CrawlProducer` — `enqueue_for_bike` / `enqueue_all` / `enqueue_watches`. Translates the query *per adapter* via `utils/i18n.py` at enqueue time, so the worker is dumb about translation. The producer is the only side that imports the translation dictionary.
   - `CrawlWorker` — `run_once` / `run_forever`. Claims one job filtered by `--adapters` allowlist, runs the adapter, ingests results via `IngestService`, marks the job complete/failed. Periodically calls `release_stale` so a crashed worker's locked rows return to `pending`.
-- **`services/catalog_sync.py`** — webike.tw scraper that populates `watcher.bike_catalog` and `watcher.categories`. Configured via `WEBIKE_CATALOG_MAKES`.
+- **`services/catalog_sync.py`** — webike.tw scraper that populates `watcher.bike_catalog` and `watcher.categories`. Three-pass: (1) scrape the home page for `/mf/{MAKE}/` links to get the full maker list (14 as of 2026-05; `DEFAULT_MAKES` is the offline fallback); (2) walk `/mf/{MAKE}/{cc}` index pages to upsert one umbrella row per model with `year_start=year_end=0`; (3) for each umbrella, fetch its `/md/{id}` detail page and upsert one row per `年式 : YYYY ~ YYYY` year-range variant (open-ended `~ ` end-years default to the current year). `BikeCatalog::yearsForModel` returns the umbrella's `0` only when no real variants exist.
 - **`utils/http.py`** — shared async client factory + `AsyncRateLimiter` + `with_retries`. Adapters must use this, not raw `httpx`.
 
 ### Queue conventions
@@ -131,6 +131,16 @@ php artisan queue:work --queue=sync
 - **Watch list semantics**: every `/parts/live-search` POST `firstOrCreate`s a `parts_watches` row at high priority (re-promotes if previously revoked). "Revoke priority" sets `is_high_priority=false` + `priority_revoked_at=now()` but **keeps the row**. Only the watch-sweep pass in `services/crawl.py` re-crawls high-priority rows.
 - **Pagination**: `AppServiceProvider::boot()` calls `Paginator::useBootstrapFive()`. Velzon is Bootstrap 5 — without this, Laravel's default Tailwind paginator markup renders broken.
 - **Routes**: any custom route must come **above** the catch-all `Route::get('{any}', ...)` in `routes/web.php` or it'll be swallowed.
+- **Velzon template baggage**: ~200 demo views ship under `resources/views/` (`apps-*`, `charts-*`, `ui-*`, `forms-*`, `dashboard-*`, etc.) and are reachable only via the `{any}` catch-all → `HomeController::index` (renders any blade whose filename matches). The app's nav never links to them. Don't translate, refactor, or test them. The views actually wired into routes are: `parts/*`, `my-bikes/index`, `watch-list/index`, `admin/users/*`, `admin/adapters/index`, `auth/*`, `layouts/*`, `components/breadcrumb`. The Velzon sidebar's lower demo menu uses `@lang('translation.*')` keys from `resources/lang/<locale>/translation.php` — separate from the JSON files used by the app.
+- **Blade `@json([...])` parse trap**: when the array literal contains nested calls with their own arrays (e.g. `__('key', ['x' => 0])`), Blade's regex parser miscounts brackets and emits broken PHP → 500. Build the array in a `@php` block first, then pass the variable: `@json($foo)`.
+
+### Internationalization (i18n)
+
+- Three locales: `en` (fallback), `ja`, `zh-TW`. Whitelist lives at `config('app.available_locales')`.
+- Translation strings live in `console/resources/lang/{en,ja,zh-TW}.json` — **not** `lang/` at the project root. Laravel's `langPath()` auto-detects to `resources/lang/` because Velzon ships that directory; writing JSON to `lang/` does nothing. Keys are the English source string; lookups via `__('Apply filters')`. Missing keys fall through to the key, so untranslated strings render as English.
+- `app/Http/Middleware/Localization.php` runs in the `web` group and resolves the locale in this order: `?lang=` query → session → cookie → `App\Services\IpLocaleResolver` (ip-api.com country → JP=ja, TW/HK/MO=zh-TW, 24h cache, private/invalid IPs short-circuit) → fallback. The first valid hit is persisted to session + 1y cookie.
+- Manual switching: topbar dropdown links to `index/{locale}` → `HomeController::lang($locale)`, which validates against the whitelist and persists session + cookie.
+- For JS-side translations, emit a `@php $foo = [...]; @endphp` block above the `<script>` and inject via `const FOO_I18N = @json($foo);` (see the `@json` parse trap above).
 
 ### Key models
 
@@ -162,7 +172,7 @@ Top-level `.env` (Python crawler):
 DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/bike_parts_watcher
 DB_SCHEMA=watcher
 EBAY_ENABLED=true   EBAY_CLIENT_ID=…   EBAY_CLIENT_SECRET=…   EBAY_MARKETPLACE_ID=EBAY_US
-WEBIKE_ENABLED=true   WEBIKE_CATALOG_MAKES=SUZUKI,HONDA,YAMAHA,KAWASAKI
+WEBIKE_ENABLED=true
 MANUAL_SEARCH_ENABLED=true
 HTTP_TIMEOUT_SECONDS=20   HTTP_RETRIES=3   HTTP_RATE_LIMIT_PER_SECOND=3
 ```

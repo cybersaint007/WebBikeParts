@@ -156,10 +156,9 @@ The parser iterates `meta[itemprop="price"]` (skipping the unpriced "you may als
 
 ```env
 WEBIKE_ENABLED=true
-WEBIKE_CATALOG_MAKES=SUZUKI            # makes to import via `parts-watch sync-catalog`
 ```
 
-The catalog sync (`parts-watch sync-catalog`) is what populates `bike_catalog` rows with `webike_url`. Without that, the adapter has no entry point for a bike.
+The catalog sync (`parts-watch sync-catalog`) is what populates `bike_catalog` rows with `webike_url`. Without that, the adapter has no entry point for a bike. The list of makers walked by the sync is discovered automatically from `https://www.webike.tw/` on each run (every `/mf/{MAKE}/` link in the page chrome) — there's no whitelist to maintain.
 
 **Webike JP (`webike_jp`) is a separate stub** — see §4.
 
@@ -235,7 +234,6 @@ EBAY_MARKETPLACE_IDS=EBAY_US,EBAY_GB,EBAY_DE,EBAY_AU,EBAY_IT
 YAHOO_AUCTIONS_ENABLED=true
 BUYEE_ENABLED=true
 WEBIKE_ENABLED=true
-WEBIKE_CATALOG_MAKES=SUZUKI
 MONOTARO_ENABLED=true
 MANUAL_SEARCH_ENABLED=true
 

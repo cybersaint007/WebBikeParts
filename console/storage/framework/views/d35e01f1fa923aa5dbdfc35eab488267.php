@@ -3,7 +3,7 @@
 <?php $__env->startSection('content'); ?>
     <?php $__env->startComponent('components.breadcrumb'); ?>
         <?php $__env->slot('li_1'); ?>
-            <a href="<?php echo e(route('parts.index')); ?>">Parts</a>
+            <a href="<?php echo e(route('parts.index')); ?>"><?php echo e(__('Parts')); ?></a>
         <?php $__env->endSlot(); ?>
         <?php $__env->slot('title'); ?> <?php echo e(\Illuminate\Support\Str::limit($listing->title, 60)); ?> <?php $__env->endSlot(); ?>
     <?php echo $__env->renderComponent(); ?>
@@ -37,7 +37,7 @@
                         <?php if($listing->category && $listing->category !== 'unknown'): ?>
                             <span class="badge bg-secondary-subtle text-secondary"><?php echo e($listing->category); ?></span>
                         <?php endif; ?>
-                        <span class="badge bg-warning-subtle text-warning">bike: <?php echo e($listing->bike_key); ?></span>
+                        <span class="badge bg-warning-subtle text-warning"><?php echo e(__('bike: :key', ['key' => $listing->bike_key])); ?></span>
                     </div>
 
                     <h2 class="mb-4">
@@ -46,32 +46,32 @@
 
                             <small class="text-muted fs-16"><?php echo e($listing->price_currency); ?></small>
                             <?php if($listing->shipping_amount): ?>
-                                <small class="text-muted fs-13 d-block">+ <?php echo e(number_format((float) $listing->shipping_amount, 2)); ?> shipping</small>
+                                <small class="text-muted fs-13 d-block">+ <?php echo e(number_format((float) $listing->shipping_amount, 2)); ?> <?php echo e(__('shipping')); ?></small>
                             <?php endif; ?>
                         <?php else: ?>
-                            <span class="text-muted fs-18">Price not available</span>
+                            <span class="text-muted fs-18"><?php echo e(__('Price not available')); ?></span>
                         <?php endif; ?>
                     </h2>
 
                     <a href="<?php echo e($listing->url); ?>" target="_blank" rel="noopener noreferrer"
                        class="btn btn-primary btn-lg mb-4">
-                        View on <?php echo e($listing->source_name); ?>
+                        <?php echo e(__('View on :source', ['source' => $listing->source_name])); ?>
 
                         <i class="ri-external-link-line ms-1"></i>
                     </a>
 
                     <dl class="row mb-0">
                         <?php if($listing->seller_name): ?>
-                            <dt class="col-sm-3 text-muted">Seller</dt>
+                            <dt class="col-sm-3 text-muted"><?php echo e(__('Seller')); ?></dt>
                             <dd class="col-sm-9"><?php echo e($listing->seller_name); ?><?php echo e($listing->seller_country ? ' · ' . $listing->seller_country : ''); ?></dd>
                         <?php endif; ?>
                         <?php if($listing->part_number): ?>
-                            <dt class="col-sm-3 text-muted">Part #</dt>
+                            <dt class="col-sm-3 text-muted"><?php echo e(__('Part #')); ?></dt>
                             <dd class="col-sm-9"><code><?php echo e($listing->part_number); ?></code></dd>
                         <?php endif; ?>
-                        <dt class="col-sm-3 text-muted">First seen</dt>
+                        <dt class="col-sm-3 text-muted"><?php echo e(__('First seen')); ?></dt>
                         <dd class="col-sm-9"><?php echo e($listing->first_seen_at?->format('Y-m-d H:i')); ?></dd>
-                        <dt class="col-sm-3 text-muted">Last seen</dt>
+                        <dt class="col-sm-3 text-muted"><?php echo e(__('Last seen')); ?></dt>
                         <dd class="col-sm-9"><?php echo e($listing->last_seen_at?->format('Y-m-d H:i')); ?> (<?php echo e($listing->last_seen_at?->diffForHumans()); ?>)</dd>
                     </dl>
                 </div>
@@ -81,24 +81,24 @@
 
     <?php if($listing->description): ?>
         <div class="card">
-            <div class="card-header"><h5 class="mb-0">Description</h5></div>
+            <div class="card-header"><h5 class="mb-0"><?php echo e(__('Description')); ?></h5></div>
             <div class="card-body" style="white-space:pre-wrap;"><?php echo e($listing->description); ?></div>
         </div>
     <?php endif; ?>
 
     <?php if($listing->fitment_text): ?>
         <div class="card">
-            <div class="card-header"><h5 class="mb-0">Fitment</h5></div>
+            <div class="card-header"><h5 class="mb-0"><?php echo e(__('Fitment')); ?></h5></div>
             <div class="card-body" style="white-space:pre-wrap;"><?php echo e($listing->fitment_text); ?></div>
         </div>
     <?php endif; ?>
 
     <?php if($listing->snapshots->isNotEmpty()): ?>
         <div class="card">
-            <div class="card-header"><h5 class="mb-0">Price history</h5></div>
+            <div class="card-header"><h5 class="mb-0"><?php echo e(__('Price history')); ?></h5></div>
             <div class="card-body p-0">
                 <table class="table mb-0">
-                    <thead><tr><th>Checked</th><th class="text-end">Price</th><th>Availability</th></tr></thead>
+                    <thead><tr><th><?php echo e(__('Checked')); ?></th><th class="text-end"><?php echo e(__('Price')); ?></th><th><?php echo e(__('Availability')); ?></th></tr></thead>
                     <tbody>
                     <?php $__currentLoopData = $listing->snapshots; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <tr>

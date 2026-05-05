@@ -33,37 +33,37 @@
             </div>
             <ul class="navbar-nav" id="navbar-nav">
                 <?php if(auth()->guard()->check()): ?>
-                <li class="menu-title"><span>Crawler</span></li>
+                <li class="menu-title"><span><?php echo e(__('Crawler')); ?></span></li>
                 <li class="nav-item">
                     <a class="nav-link menu-link <?php echo e(request()->routeIs('parts.*') ? 'active' : ''); ?>"
                        href="<?php echo e(route('parts.index')); ?>">
-                        <i class="ri-shopping-bag-line"></i> <span>Parts</span>
+                        <i class="ri-shopping-bag-line"></i> <span><?php echo e(__('Parts')); ?></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link menu-link <?php echo e(request()->routeIs('my-bikes.*') ? 'active' : ''); ?>"
                        href="<?php echo e(route('my-bikes.index')); ?>">
-                        <i class="ri-motorbike-line"></i> <span>My Bikes</span>
+                        <i class="ri-motorbike-line"></i> <span><?php echo e(__('My Bikes')); ?></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link menu-link <?php echo e(request()->routeIs('watch-list.*') ? 'active' : ''); ?>"
                        href="<?php echo e(route('watch-list.index')); ?>">
-                        <i class="ri-eye-line"></i> <span>Watch List</span>
+                        <i class="ri-eye-line"></i> <span><?php echo e(__('Watch List')); ?></span>
                     </a>
                 </li>
                 <?php if(auth()->user()?->isAdmin()): ?>
-                <li class="menu-title"><span>Admin</span></li>
+                <li class="menu-title"><span><?php echo e(__('Admin')); ?></span></li>
                 <li class="nav-item">
                     <a class="nav-link menu-link <?php echo e(request()->routeIs('admin.users.*') ? 'active' : ''); ?>"
                        href="<?php echo e(route('admin.users.index')); ?>">
-                        <i class="ri-user-settings-line"></i> <span>Users</span>
+                        <i class="ri-user-settings-line"></i> <span><?php echo e(__('Users')); ?></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link menu-link <?php echo e(request()->routeIs('admin.adapters.*') ? 'active' : ''); ?>"
                        href="<?php echo e(route('admin.adapters.index')); ?>">
-                        <i class="ri-pulse-line"></i> <span>Adapter Status</span>
+                        <i class="ri-pulse-line"></i> <span><?php echo e(__('Adapter Status')); ?></span>
                     </a>
                 </li>
                 <?php endif; ?>

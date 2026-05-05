@@ -1,26 +1,27 @@
-<?php $__env->startSection('title', 'Parts'); ?>
+<?php $__env->startSection('title', __('Parts')); ?>
 
 <?php $__env->startSection('content'); ?>
     <?php $__env->startComponent('components.breadcrumb'); ?>
-        <?php $__env->slot('li_1'); ?> Crawler <?php $__env->endSlot(); ?>
-        <?php $__env->slot('title'); ?> Parts <?php $__env->endSlot(); ?>
+        <?php $__env->slot('li_1'); ?> <?php echo e(__('Crawler')); ?> <?php $__env->endSlot(); ?>
+        <?php $__env->slot('title'); ?> <?php echo e(__('Parts')); ?> <?php $__env->endSlot(); ?>
     <?php echo $__env->renderComponent(); ?>
 
     <div class="alert alert-info d-flex align-items-center">
         <div class="flex-grow-1">
             <?php if($scope['all_bikes']): ?>
-                <strong>Showing parts for: all crawled bikes</strong>
+                <strong><?php echo e(__('Showing parts for: all crawled bikes')); ?></strong>
                 <?php if($scope['my_bike_count'] > 0): ?>
-                    — <a href="<?php echo e(route('parts.index', request()->except('all_bikes'))); ?>">Limit to my bikes</a>
+                    — <a href="<?php echo e(route('parts.index', request()->except('all_bikes'))); ?>"><?php echo e(__('Limit to my bikes')); ?></a>
                 <?php endif; ?>
             <?php elseif($scope['my_bike_count'] === 0): ?>
-                <strong>You haven't added any bikes yet.</strong>
-                <a href="<?php echo e(route('my-bikes.index')); ?>">Add a bike</a> to start crawling, or
-                <a href="<?php echo e(route('parts.index', array_merge(request()->all(), ['all_bikes' => 1]))); ?>">browse all bikes</a>.
+                <strong><?php echo e(__("You haven't added any bikes yet.")); ?></strong>
+                <a href="<?php echo e(route('my-bikes.index')); ?>"><?php echo e(__('Add a bike')); ?></a> <?php echo e(__('to start crawling, or')); ?>
+
+                <a href="<?php echo e(route('parts.index', array_merge(request()->all(), ['all_bikes' => 1]))); ?>"><?php echo e(__('browse all bikes')); ?></a>.
             <?php else: ?>
-                <strong>Showing parts for: My Bikes (<?php echo e($scope['my_bike_count']); ?>)</strong>
+                <strong><?php echo e(__('Showing parts for: My Bikes (:count)', ['count' => $scope['my_bike_count']])); ?></strong>
                 <span class="text-muted">— <?php echo e(implode(', ', $scope['my_bike_labels'])); ?></span>
-                — <a href="<?php echo e(route('parts.index', array_merge(request()->all(), ['all_bikes' => 1]))); ?>">Show all bikes</a>
+                — <a href="<?php echo e(route('parts.index', array_merge(request()->all(), ['all_bikes' => 1]))); ?>"><?php echo e(__('Show all bikes')); ?></a>
             <?php endif; ?>
         </div>
     </div>
@@ -31,33 +32,62 @@
             <div class="card">
                 <div class="card-header">
                     <div class="d-flex align-items-center">
-                        <h5 class="fs-16 flex-grow-1 mb-0">Filters</h5>
-                        <a href="<?php echo e(route('parts.index')); ?>" class="text-decoration-underline">Clear all</a>
+                        <h5 class="fs-16 flex-grow-1 mb-0"><?php echo e(__('Filters')); ?></h5>
+                        <a href="<?php echo e(route('parts.index')); ?>" class="text-decoration-underline"><?php echo e(__('Clear all')); ?></a>
                     </div>
                 </div>
 
                 <div class="card-body">
                     <form method="GET" action="<?php echo e(route('parts.index')); ?>">
+                        <?php if($scope['all_bikes']): ?>
+                            <input type="hidden" name="all_bikes" value="1">
+                        <?php endif; ?>
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Search</label>
+                            <label class="form-label fw-medium"><?php echo e(__('Search')); ?></label>
                             <input type="search" name="q" value="<?php echo e(request('q')); ?>" class="form-control"
-                                   placeholder="Title, part #, fitment…">
+                                   placeholder="<?php echo e(__('Title, part #, fitment…')); ?>">
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Category</label>
-                            <select name="category" class="form-select">
-                                <option value="">All categories</option>
-                                <?php $__currentLoopData = $facets['categories']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $cat): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <option value="<?php echo e($cat); ?>" <?php if(request('category') === $cat): echo 'selected'; endif; ?>><?php echo e($cat); ?></option>
+                            <label class="form-label fw-medium"><?php echo e(__('Bike')); ?></label>
+                            <select name="bike" class="form-select">
+                                <option value=""><?php echo e($scope['all_bikes'] ? __('All bikes') : __('All my bikes')); ?></option>
+                                <?php $__currentLoopData = $facets['bikes']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $bike): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <option value="<?php echo e($bike['key']); ?>" <?php if(request('bike') === $bike['key']): echo 'selected'; endif; ?>><?php echo e($bike['label']); ?></option>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </select>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Source</label>
+                            <label class="form-label fw-medium"><?php echo e(__('Category')); ?></label>
+                            <select name="category" id="parts-filter-category" class="form-select">
+                                <option value=""><?php echo e(__('All categories')); ?></option>
+                                <?php $__currentLoopData = $facets['categories']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $cat): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <option value="<?php echo e($cat); ?>" <?php if(request('category') === $cat): echo 'selected'; endif; ?>><?php echo e(ucfirst($cat)); ?></option>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-medium"><?php echo e(__('Subcategory')); ?></label>
+                            <select name="subcategory" id="parts-filter-subcategory" class="form-select">
+                                <option value=""><?php echo e(__('All subcategories')); ?></option>
+                                <?php $__currentLoopData = $facets['subcategories']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sub): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php
+                                        $parent = explode('-', $sub, 2)[0];
+                                        $label  = str_replace('-', ' ', \Illuminate\Support\Str::after($sub, $parent . '-'));
+                                        $label  = $label === '' ? $sub : ucwords($label);
+                                    ?>
+                                    <option value="<?php echo e($sub); ?>" data-parent="<?php echo e($parent); ?>"
+                                            <?php if(request('subcategory') === $sub): echo 'selected'; endif; ?>><?php echo e($label); ?></option>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-medium"><?php echo e(__('Source')); ?></label>
                             <select name="source" class="form-select">
-                                <option value="">All sources</option>
+                                <option value=""><?php echo e(__('All sources')); ?></option>
                                 <?php $__currentLoopData = $facets['sources']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $src): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <option value="<?php echo e($src); ?>" <?php if(request('source') === $src): echo 'selected'; endif; ?>><?php echo e($src); ?></option>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
@@ -65,9 +95,9 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Condition</label>
+                            <label class="form-label fw-medium"><?php echo e(__('Condition')); ?></label>
                             <select name="condition" class="form-select">
-                                <option value="">Any condition</option>
+                                <option value=""><?php echo e(__('Any condition')); ?></option>
                                 <?php $__currentLoopData = $facets['conditions']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $cond): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <option value="<?php echo e($cond); ?>" <?php if(request('condition') === $cond): echo 'selected'; endif; ?>><?php echo e($cond); ?></option>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
@@ -75,16 +105,16 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-medium">Price range</label>
+                            <label class="form-label fw-medium"><?php echo e(__('Price range')); ?></label>
                             <div class="d-flex gap-2">
                                 <input type="number" step="0.01" name="price_min" value="<?php echo e(request('price_min')); ?>"
-                                       class="form-control" placeholder="Min">
+                                       class="form-control" placeholder="<?php echo e(__('Min')); ?>">
                                 <input type="number" step="0.01" name="price_max" value="<?php echo e(request('price_max')); ?>"
-                                       class="form-control" placeholder="Max">
+                                       class="form-control" placeholder="<?php echo e(__('Max')); ?>">
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100">Apply filters</button>
+                        <button type="submit" class="btn btn-primary w-100"><?php echo e(__('Apply filters')); ?></button>
                     </form>
                 </div>
             </div>
@@ -97,12 +127,15 @@
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <input id="parts-q" type="search" class="form-control flex-grow-1"
                                style="max-width:380px"
-                               placeholder="Instant search: title, part #, fitment…"
+                               placeholder="<?php echo e(__('Instant search: title, part #, fitment…')); ?>"
                                value="<?php echo e(request('q')); ?>">
                         <h5 class="card-title mb-0 ms-auto" id="parts-result-count">
-                            Showing <?php echo e($listings->firstItem() ?? 0); ?>–<?php echo e($listings->lastItem() ?? 0); ?>
+                            <?php echo e(__('Showing :first–:last of :total parts', [
+                                'first' => $listings->firstItem() ?? 0,
+                                'last'  => $listings->lastItem() ?? 0,
+                                'total' => $listings->total(),
+                            ])); ?>
 
-                            of <?php echo e($listings->total()); ?> parts
                         </h5>
                     </div>
                 </div>
@@ -110,14 +143,16 @@
                 <div class="card-body" id="parts-grid-container">
                     <?php if($listings->isEmpty()): ?>
                         <div class="text-center py-5" id="parts-empty-state">
-                            <h5 class="text-muted">No cached matches.</h5>
+                            <h5 class="text-muted"><?php echo e(__('No cached matches.')); ?></h5>
                             <p class="text-muted">
-                                Try clearing filters, or run a live search across eBay / Webike now.
+                                <?php echo e(__('Try clearing filters, or run a live search across eBay / Webike now.')); ?>
+
                             </p>
                             <button type="button" class="btn btn-primary" id="live-search-btn" disabled>
-                                <i class="ri-search-eye-line me-1"></i> Search live sources
+                                <i class="ri-search-eye-line me-1"></i> <?php echo e(__('Search live sources')); ?>
+
                             </button>
-                            <p class="text-muted fs-13 mt-2">Type a query in the search box above first.</p>
+                            <p class="text-muted fs-13 mt-2"><?php echo e(__('Type a query in the search box above first.')); ?></p>
                         </div>
                     <?php else: ?>
                         <div class="row" id="parts-grid">
@@ -165,8 +200,9 @@
                                                     }
                                                 ?>
                                                 <?php if($watched): ?>
-                                                    <span class="badge bg-warning-subtle text-warning" title="Matches an active watch">
-                                                        ★ Watched
+                                                    <span class="badge bg-warning-subtle text-warning" title="<?php echo e(__('Matches an active watch')); ?>">
+                                                        ★ <?php echo e(__('Watched')); ?>
+
                                                     </span>
                                                 <?php endif; ?>
                                             </div>
@@ -177,18 +213,18 @@
 
                                                         <small class="text-muted fs-13"><?php echo e($l->price_currency); ?></small>
                                                     <?php else: ?>
-                                                        <span class="text-muted fs-14">Price n/a</span>
+                                                        <span class="text-muted fs-14"><?php echo e(__('Price n/a')); ?></span>
                                                     <?php endif; ?>
                                                 </h5>
                                             </div>
                                             <a href="<?php echo e($l->url); ?>" target="_blank" rel="noopener noreferrer"
                                                class="btn btn-sm btn-outline-primary w-100">
-                                                View on <?php echo e($l->source_name); ?>
+                                                <?php echo e(__('View on :source', ['source' => $l->source_name])); ?>
 
                                                 <i class="ri-external-link-line ms-1"></i>
                                             </a>
                                             <p class="text-muted fs-12 mt-2 mb-0">
-                                                Last seen <?php echo e($l->last_seen_at?->diffForHumans()); ?>
+                                                <?php echo e(__('Last seen :time', ['time' => $l->last_seen_at?->diffForHumans()])); ?>
 
                                             </p>
                                         </div>
@@ -209,7 +245,23 @@
 <?php $__env->stopSection(); ?>
 
 <?php $__env->startSection('script'); ?>
+<?php
+    $partsI18n = [
+        'priceNa'         => __('Price n/a'),
+        'noMatchesFor'    => __('No cached matches for ":query".'),
+        'liveSearchBlurb' => __("Run a live search across eBay / Webike now and we'll save it to your watch list."),
+        'searchLive'      => __('Search live sources'),
+        'searchingLive'   => __('Searching live sources…'),
+        'liveFailed'      => __('Live search failed'),
+        'lastSeen'        => __('Last seen :time'),
+        'viewOn'          => __('View on :source'),
+        'countParts'      => __(':count parts', ['count' => 0]),
+        'showingRange'    => __('Showing :first–:last of :total parts'),
+    ];
+?>
 <script>
+const PARTS_I18N = <?php echo json_encode($partsI18n, 15, 512) ?>;
+
 (function () {
     const qInput  = document.getElementById('parts-q');
     const grid    = document.getElementById('parts-grid');
@@ -233,7 +285,7 @@
         const catBadge = (l.category && l.category !== 'unknown') ? `<span class="badge bg-secondary-subtle text-secondary">${escapeHtml(l.category)}</span>` : '';
         const price = (l.price_amount !== null && l.price_amount !== undefined)
             ? `${Number(l.price_amount).toFixed(2)} <small class="text-muted fs-13">${escapeHtml(l.price_currency || '')}</small>`
-            : `<span class="text-muted fs-14">Price n/a</span>`;
+            : `<span class="text-muted fs-14">${escapeHtml(PARTS_I18N.priceNa)}</span>`;
         return `
         <div class="col-xl-4 col-md-6">
             <div class="card h-100 shadow-none border">
@@ -249,21 +301,22 @@
                     </div>
                     <h5 class="mb-3">${price}</h5>
                     <a href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary w-100">
-                        View on ${escapeHtml(l.source_name)} <i class="ri-external-link-line ms-1"></i>
+                        ${escapeHtml(PARTS_I18N.viewOn.replace(':source', l.source_name))} <i class="ri-external-link-line ms-1"></i>
                     </a>
-                    <p class="text-muted fs-12 mt-2 mb-0">Last seen ${escapeHtml(l.last_seen_human || '')}</p>
+                    <p class="text-muted fs-12 mt-2 mb-0">${escapeHtml(PARTS_I18N.lastSeen.replace(':time', l.last_seen_human || ''))}</p>
                 </div>
             </div>
         </div>`;
     }
 
     function renderEmpty(q) {
+        const headline = PARTS_I18N.noMatchesFor.replace(':query', q);
         return `
         <div class="text-center py-5" id="parts-empty-state">
-            <h5 class="text-muted">No cached matches for "${escapeHtml(q)}".</h5>
-            <p class="text-muted">Run a live search across eBay / Webike now and we'll save it to your watch list.</p>
+            <h5 class="text-muted">${escapeHtml(headline)}</h5>
+            <p class="text-muted">${escapeHtml(PARTS_I18N.liveSearchBlurb)}</p>
             <button type="button" class="btn btn-primary" id="live-search-btn">
-                <i class="ri-search-eye-line me-1"></i> Search live sources
+                <i class="ri-search-eye-line me-1"></i> ${escapeHtml(PARTS_I18N.searchLive)}
             </button>
         </div>`;
     }
@@ -289,8 +342,11 @@
             const data = await r.json();
 
             counter.textContent = data.total === 0
-                ? '0 parts'
-                : `Showing ${data.pagination.first_item}–${data.pagination.last_item} of ${data.total} parts`;
+                ? PARTS_I18N.countParts.replace('0', '0')
+                : PARTS_I18N.showingRange
+                    .replace(':first', data.pagination.first_item)
+                    .replace(':last', data.pagination.last_item)
+                    .replace(':total', data.total);
 
             if (data.total === 0) {
                 grid_c.innerHTML = renderEmpty(q);
@@ -326,7 +382,7 @@
         if (!q) return;
         const btn = document.getElementById('live-search-btn');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Searching live sources…';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> ' + escapeHtml(PARTS_I18N.searchingLive);
 
         const formData = new FormData();
         formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '<?php echo e(csrf_token()); ?>');
@@ -337,7 +393,7 @@
             body: formData,
         });
         if (!r.ok) {
-            btn.innerHTML = 'Live search failed';
+            btn.innerHTML = escapeHtml(PARTS_I18N.liveFailed);
             return;
         }
         const data = await r.json();
@@ -349,7 +405,7 @@
                 const s = await sr.json();
                 if (s.status === 'success' || s.status === 'failed') {
                     runSearch(qInput.value.trim());
-                    btn.innerHTML = '<i class="ri-search-eye-line me-1"></i> Search live sources';
+                    btn.innerHTML = '<i class="ri-search-eye-line me-1"></i> ' + escapeHtml(PARTS_I18N.searchLive);
                     btn.disabled = !qInput.value.trim();
                 } else {
                     setTimeout(tick, 3000);
@@ -360,6 +416,27 @@
     }
 
     attachLiveBtn();
+
+    // Keep the Subcategory dropdown in sync with the selected Category.
+    // Subcategory slugs are `<category>-<sub>`, so we filter by data-parent.
+    const catSelect = document.getElementById('parts-filter-category');
+    const subSelect = document.getElementById('parts-filter-subcategory');
+    if (catSelect && subSelect) {
+        const syncSubOptions = (resetIfMismatched) => {
+            const cat = catSelect.value;
+            let currentStillVisible = false;
+            for (const opt of subSelect.options) {
+                if (!opt.value) { opt.hidden = false; continue; }
+                const parent = opt.dataset.parent || '';
+                const visible = !cat || parent === cat;
+                opt.hidden = !visible;
+                if (visible && opt.value === subSelect.value) currentStillVisible = true;
+            }
+            if (resetIfMismatched && !currentStillVisible) subSelect.value = '';
+        };
+        syncSubOptions(false);
+        catSelect.addEventListener('change', () => syncSubOptions(true));
+    }
 })();
 </script>
 <?php $__env->stopSection(); ?>

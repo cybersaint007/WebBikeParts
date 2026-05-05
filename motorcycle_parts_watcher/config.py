@@ -18,7 +18,6 @@ class Settings(BaseModel):
     yahoo_auctions_enabled: bool = Field(default=False, alias="YAHOO_AUCTIONS_ENABLED")
     buyee_enabled: bool = Field(default=False, alias="BUYEE_ENABLED")
     webike_enabled: bool = Field(default=False, alias="WEBIKE_ENABLED")
-    webike_catalog_makes: str = Field(default="", alias="WEBIKE_CATALOG_MAKES")
     webike_jp_enabled: bool = Field(default=False, alias="WEBIKE_JP_ENABLED")
     croooober_enabled: bool = Field(default=False, alias="CROOOOBER_ENABLED")
     mercari_enabled: bool = Field(default=False, alias="MERCARI_ENABLED")

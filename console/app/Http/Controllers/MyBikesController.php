@@ -36,9 +36,12 @@ class MyBikesController extends Controller
                 ->map(fn ($group) => $group->first()); // first = newest after orderByDesc
         }
 
-        // Latest catalog sync (any user / cron) for the "last updated" line and button state.
+        // Latest *successful* catalog sync drives the "last updated" line. We deliberately
+        // ignore queued/running/failed rows so an in-flight refresh doesn't blank out the
+        // timestamp of the previous successful run.
         $latestCatalog = SyncRun::query()
             ->where('kind', SyncRun::KIND_CATALOG)
+            ->where('status', SyncRun::STATUS_SUCCESS)
             ->latest('id')
             ->first();
         $catalogInflight = SyncRun::query()

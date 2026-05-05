@@ -34,7 +34,7 @@
                 <!-- App Search-->
                 <form class="app-search d-none d-md-block">
                     <div class="position-relative">
-                        <input type="text" class="form-control" placeholder="Search..." autocomplete="off" id="search-options" value="">
+                        <input type="text" class="form-control" placeholder="<?php echo e(__('Search...')); ?>" autocomplete="off" id="search-options" value="">
                         <span class="mdi mdi-magnify search-widget-icon"></span>
                         <span class="mdi mdi-close-circle search-widget-icon search-widget-icon-close d-none" id="search-close-options"></span>
                     </div>
@@ -128,7 +128,7 @@
                         <form class="p-3">
                             <div class="form-group m-0">
                                 <div class="input-group">
-                                    <input type="text" class="form-control" placeholder="Search ..." aria-label="Recipient's username">
+                                    <input type="text" class="form-control" placeholder="<?php echo e(__('Search ...')); ?>" aria-label="Recipient's username">
                                     <button class="btn btn-primary" type="submit"><i class="mdi mdi-magnify"></i></button>
                                 </div>
                             </div>
@@ -138,86 +138,26 @@
 
                 <div class="dropdown ms-1 topbar-head-dropdown header-item">
                     <button type="button" class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <?php switch(Session::get('lang')):
-                        case ('ru'): ?>
-                        <img src="<?php echo e(URL::asset('build/images/flags/russia.svg')); ?>" class="rounded" alt="Header Language" height="18">
-                        <?php break; ?>
-
-                        <?php case ('it'): ?>
-                        <img src="<?php echo e(URL::asset('build/images/flags/italy.svg')); ?>" class="rounded" alt="Header Language" height="18">
-                        <?php break; ?>
-
-                        <?php case ('sp'): ?>
-                        <img src="<?php echo e(URL::asset('build/images/flags/spain.svg')); ?>" class="rounded" alt="Header Language" height="18">
-                        <?php break; ?>
-
-                        <?php case ('ch'): ?>
-                        <img src="<?php echo e(URL::asset('build/images/flags/china.svg')); ?>" class="rounded" alt="Header Language" height="18">
-                        <?php break; ?>
-
-                        <?php case ('fr'): ?>
-                        <img src="<?php echo e(URL::asset('build/images/flags/french.svg')); ?>" class="rounded" alt="Header Language" height="18">
-                        <?php break; ?>
-
-                        <?php case ('gr'): ?>
-                        <img src="<?php echo e(URL::asset('build/images/flags/germany.svg')); ?>" class="rounded" alt="Header Language" height="18">
-                        <?php break; ?>
-
-                        <?php case ('ae'): ?>
-                        <img src="<?php echo e(URL::asset('build/images/flags/ae.svg')); ?>" class="rounded" alt="Header Language" height="18">
-                        <?php break; ?>
-
-                        <?php default: ?>
-                        <img src="<?php echo e(URL::asset('build/images/flags/us.svg')); ?>" class="rounded" alt="Header Language" height="18">
+                        <?php switch(app()->getLocale()):
+                            case ('ja'): ?>
+                                <span class="fw-semibold">JA</span>
+                                <?php break; ?>
+                            <?php case ('zh-TW'): ?>
+                                <span class="fw-semibold">繁</span>
+                                <?php break; ?>
+                            <?php default: ?>
+                                <span class="fw-semibold">EN</span>
                         <?php endswitch; ?>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end">
-
-                        <!-- item-->
-                        <a href="<?php echo e(url('index/en')); ?>" class="dropdown-item notify-item language py-2" data-lang="en" title="English">
-                            <img src="<?php echo e(URL::asset('build/images/flags/us.svg')); ?>" alt="user-image" class="me-2 rounded" height="18">
+                        <a href="<?php echo e(url('index/en')); ?>" class="dropdown-item notify-item language py-2 <?php if(app()->getLocale()==='en'): ?> active <?php endif; ?>" data-lang="en" title="English">
                             <span class="align-middle">English</span>
                         </a>
-
-                        <!-- item-->
-                        <a href="<?php echo e(url('index/sp')); ?>" class="dropdown-item notify-item language" data-lang="sp" title="Spanish">
-                            <img src="<?php echo e(URL::asset('build/images/flags/spain.svg')); ?>" alt="user-image" class="me-2 rounded" height="18">
-                            <span class="align-middle">Española</span>
+                        <a href="<?php echo e(url('index/ja')); ?>" class="dropdown-item notify-item language py-2 <?php if(app()->getLocale()==='ja'): ?> active <?php endif; ?>" data-lang="ja" title="Japanese">
+                            <span class="align-middle">日本語</span>
                         </a>
-
-                        <!-- item-->
-                        <a href="<?php echo e(url('index/gr')); ?>" class="dropdown-item notify-item language" data-lang="gr" title="German">
-                            <img src="<?php echo e(URL::asset('build/images/flags/germany.svg')); ?>" alt="user-image" class="me-2 rounded" height="18"> <span class="align-middle">Deutsche</span>
-                        </a>
-
-                        <!-- item-->
-                        <a href="<?php echo e(url('index/it')); ?>" class="dropdown-item notify-item language" data-lang="it" title="Italian">
-                            <img src="<?php echo e(URL::asset('build/images/flags/italy.svg')); ?>" alt="user-image" class="me-2 rounded" height="18">
-                            <span class="align-middle">Italiana</span>
-                        </a>
-
-                        <!-- item-->
-                        <a href="<?php echo e(url('index/ru')); ?>" class="dropdown-item notify-item language" data-lang="ru" title="Russian">
-                            <img src="<?php echo e(URL::asset('build/images/flags/russia.svg')); ?>" alt="user-image" class="me-2 rounded" height="18">
-                            <span class="align-middle">русский</span>
-                        </a>
-
-                        <!-- item-->
-                        <a href="<?php echo e(url('index/ch')); ?>" class="dropdown-item notify-item language" data-lang="ch" title="Chinese">
-                            <img src="<?php echo e(URL::asset('build/images/flags/china.svg')); ?>" alt="user-image" class="me-2 rounded" height="18">
-                            <span class="align-middle">中国人</span>
-                        </a>
-
-                        <!-- item-->
-                        <a href="<?php echo e(url('index/fr')); ?>" class="dropdown-item notify-item language" data-lang="fr" title="French">
-                            <img src="<?php echo e(URL::asset('build/images/flags/french.svg')); ?>" alt="user-image" class="me-2 rounded" height="18">
-                            <span class="align-middle">français</span>
-                        </a>
-
-                        <!-- item-->
-                        <a href="<?php echo e(url('index/ae')); ?>" class="dropdown-item notify-item language" data-lang="ae" title="Arabic">
-                            <img src="<?php echo e(URL::asset('build/images/flags/ae.svg')); ?>" alt="user-image" class="me-2 rounded" height="18">
-                            <span class="align-middle">Arabic</span>
+                        <a href="<?php echo e(url('index/zh-TW')); ?>" class="dropdown-item notify-item language py-2 <?php if(app()->getLocale()==='zh-TW'): ?> active <?php endif; ?>" data-lang="zh-TW" title="Traditional Chinese">
+                            <span class="align-middle">繁體中文</span>
                         </a>
                     </div>
                 </div>
@@ -720,16 +660,13 @@
                     </button>
                     <div class="dropdown-menu dropdown-menu-end">
                         <!-- item-->
-                        <h6 class="dropdown-header">Welcome Anna!</h6>
-                        <a class="dropdown-item" href="pages-profile"><i class="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Profile</span></a>
-                        <a class="dropdown-item" href="apps-chat"><i class="mdi mdi-message-text-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Messages</span></a>
-                        <a class="dropdown-item" href="apps-tasks-kanban"><i class="mdi mdi-calendar-check-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Taskboard</span></a>
-                        <a class="dropdown-item" href="pages-faqs"><i class="mdi mdi-lifebuoy text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Help</span></a>
+                        <h6 class="dropdown-header"><?php echo e(__('Welcome :name!', ['name' => Auth::user()->name ?? ''])); ?></h6>
+                        <a class="dropdown-item" href="pages-profile"><i class="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i> <span class="align-middle"><?php echo e(__('Profile')); ?></span></a>
+                        <a class="dropdown-item" href="apps-chat"><i class="mdi mdi-message-text-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle"><?php echo e(__('Messages')); ?></span></a>
+                        <a class="dropdown-item" href="pages-faqs"><i class="mdi mdi-lifebuoy text-muted fs-16 align-middle me-1"></i> <span class="align-middle"><?php echo e(__('Help')); ?></span></a>
                         <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="pages-profile"><i class="mdi mdi-wallet text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Balance : <b>$5971.67</b></span></a>
-                        <a class="dropdown-item" href="pages-profile-settings"><span class="badge bg-success-subtle text-success mt-1 float-end">New</span><i class="mdi mdi-cog-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Settings</span></a>
-                        <a class="dropdown-item" href="auth-lockscreen-basic"><i class="mdi mdi-lock text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Lock screen</span></a>
-                        <a class="dropdown-item " href="javascript:void();" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="bx bx-power-off font-size-16 align-middle me-1"></i> <span key="t-logout"><?php echo app('translator')->get('translation.logout'); ?></span></a>
+                        <a class="dropdown-item" href="pages-profile-settings"><i class="mdi mdi-cog-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle"><?php echo e(__('Settings')); ?></span></a>
+                        <a class="dropdown-item " href="javascript:void();" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="bx bx-power-off font-size-16 align-middle me-1"></i> <span><?php echo e(__('Logout')); ?></span></a>
                         <form id="logout-form" action="<?php echo e(route('logout')); ?>" method="POST" style="display: none;">
                             <?php echo csrf_field(); ?>
                         </form>

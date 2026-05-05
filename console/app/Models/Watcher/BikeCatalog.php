@@ -45,15 +45,20 @@ class BikeCatalog extends Model
             ->get();
 
         $years = [];
+        $hasUmbrella = false;
         foreach ($rows as $row) {
-            // year_start = 0 → catalog row has no year info ("any year").
+            // year_start = 0 → catalog row has no year info ("any year"). Held aside
+            // until we know whether real year-range variants exist for this model.
             if ((int) $row->year_start === 0 && (int) $row->year_end === 0) {
-                $years[0] = true;
+                $hasUmbrella = true;
                 continue;
             }
             for ($y = $row->year_start; $y <= $row->year_end; $y++) {
                 $years[$y] = true;
             }
+        }
+        if (empty($years) && $hasUmbrella) {
+            $years[0] = true;
         }
         ksort($years);
         return array_keys($years);
