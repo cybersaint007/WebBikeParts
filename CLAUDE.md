@@ -6,10 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Two sub-projects sharing one PostgreSQL database (`bike_parts_watcher`):
 
-- **`motorcycle_parts_watcher/`** — Python 3.12+ async crawler. Pulls aftermarket / OEM / used parts listings from eBay and Webike (Yahoo Auctions stub) into the `watcher` schema. Typer CLI entrypoint: `parts-watch`.
+- **`motorcycle_parts_watcher/`** — Python 3.12+ async crawler. Pulls aftermarket / OEM / used parts listings from eBay, Webike (TW), Yahoo Auctions (JP), Buyee, Monotaro, plus a manual-search fallback, into the `watcher` schema. Several JP sources (`webike_jp`, `croooober`, `mercari`, `rakuten`, `goobike`) are stubs blocked on geo / SPA / API-key issues — see `ADAPTERS.md`. Typer CLI entrypoint: `parts-watch`.
 - **`console/`** — Laravel 12 / PHP 8.2 web UI (Velzon admin template, Vite, Bootstrap 5). Owns the `console` schema, reads from `watcher` via a second DB connection, and **shells out to `parts-watch`** via queued jobs for on-demand crawls and catalog sync.
 
 The two pieces are not independent — the console drives crawl scope (users pick bikes; only those get crawled) and triggers ad-hoc work.
+
+### Reference docs
+
+- `CRAWLER_ARCHITECTURE.md` — end-to-end crawler runtime: producer/worker/queue/ingest/adapters/Laravel bridge, plus an operational runbook.
+- `ADAPTERS.md` — per-source HTTP/parse details and the status (live vs blocked) of each adapter.
+- `MOTORCYCLE_PARTS_WATCHER_DATABASE.md` — DB ER diagram + sample queries (predates `bike_catalog` / `categories`).
 
 ---
 
@@ -59,12 +65,7 @@ Data flow:
 The producer and worker are decoupled by the queue so workers can run on geo-distributed hosts (a JP-locale worker for `webike_jp` / `yahoo_auctions` / `croooober` / `mercari` / `monotaro` / `rakuten` / `goobike`; a central worker for `ebay` / `webike` / `manual_search`). Workers connect to the central Postgres over a private link (WireGuard/Tailscale).
 
 - **`adapters/`** — one file per source. All implement `ListingAdapter` from `adapters/base.py`:
-  `async fetch(bike: BikeRef, query: str | None = None) -> list[NormalizedListing]`.
-  - `ebay.py` — primary, OAuth + Browse API
-  - `webike.py` — scrapes the bike's `/md/{ID}` page; reads schema.org microdata (`<meta itemprop="price">`); finds product images by walking *up* from the price meta to a sibling `item__header__img` div
-  - `manual_search.py` — fallback that hashes the query into `source_item_id` so different queries on the same bike produce distinct rows
-  - `yahoo_auctions.py` — direct scrape of auctions.yahoo.co.jp (works from JP IPs)
-  - `buyee.py` — same Yahoo Auctions inventory via the buyee.jp proxy-buying service; reachable from non-JP IPs, English chrome, JPY prices preserved. `source_name="buyee"` so rows don't collide with `yahoo_auctions`.
+  `async fetch(bike: BikeRef, query: str | None = None) -> list[NormalizedListing]`. See `ADAPTERS.md` for the full table of live vs blocked adapters with parse details.
 - **`schemas.py`** — `NormalizedListing` (Pydantic) is the adapter↔ingest contract.
 - **`bikes.py`** — `BikeRef` dataclass; `load_active_bikes(session)` returns the set of bikes any console user has selected (joins `console.user_bikes` cross-schema). The crawl scope is **DB-driven**, not hardcoded.
 - **`services/ingest.py`** — categorizes (`utils/categorizer.py`), hashes (`utils/hashing.py`), upserts on `(source_name, source_item_id)` UNIQUE, always writes one `listing_snapshots` row per crawl.
@@ -72,7 +73,7 @@ The producer and worker are decoupled by the queue so workers can run on geo-dis
 - **`services/crawl.py`** — split into:
   - `CrawlProducer` — `enqueue_for_bike` / `enqueue_all` / `enqueue_watches`. Translates the query *per adapter* via `utils/i18n.py` at enqueue time, so the worker is dumb about translation. The producer is the only side that imports the translation dictionary.
   - `CrawlWorker` — `run_once` / `run_forever`. Claims one job filtered by `--adapters` allowlist, runs the adapter, ingests results via `IngestService`, marks the job complete/failed. Periodically calls `release_stale` so a crashed worker's locked rows return to `pending`.
-- **`services/catalog_sync.py`** — webike.tw scraper that populates `watcher.bike_catalog` and `watcher.categories`. Three-pass: (1) scrape the home page for `/mf/{MAKE}/` links to get the full maker list (14 as of 2026-05; `DEFAULT_MAKES` is the offline fallback); (2) walk `/mf/{MAKE}/{cc}` index pages to upsert one umbrella row per model with `year_start=year_end=0`; (3) for each umbrella, fetch its `/md/{id}` detail page and upsert one row per `年式 : YYYY ~ YYYY` year-range variant (open-ended `~ ` end-years default to the current year). `BikeCatalog::yearsForModel` returns the umbrella's `0` only when no real variants exist.
+- **`services/catalog_sync.py`** — webike.tw scraper that populates `watcher.bike_catalog` and `watcher.categories`. Three-pass: (1) scrape the home page for `/mf/{MAKE}/` links to get the full maker list (14 as of 2026-05; `DEFAULT_MAKES` is the offline fallback); (2) walk `/mf/{MAKE}/{cc}` index pages to upsert one umbrella row per model with `year_start=year_end=0`; (3) for each umbrella, fetch its `/md/{id}` detail page and upsert one row per `年式 : YYYY ~ YYYY` year-range variant (open-ended `~ ` end-years default to the current year). `BikeCatalog::yearsForModel` returns the umbrella's `0` only when no real variants exist. The maker list used to be hardcoded via `WEBIKE_CATALOG_MAKES`; that env var is no longer read (commit `3b5bafb`).
 - **`utils/http.py`** — shared async client factory + `AsyncRateLimiter` + `with_retries`. Adapters must use this, not raw `httpx`.
 
 ### Queue conventions
@@ -127,7 +128,8 @@ php artisan queue:work --queue=sync
   - `CrawlAllJob` — `parts-watch crawl-all`, dispatched **hourly** by the scheduler (`Console\Kernel::schedule`). Skipped if a previous `crawl_all` SyncRun is still queued/running, so a long sweep doesn't pile up duplicates.
   - `CrawlWatchesJob` — `parts-watch crawl-watches`, dispatched hourly under the same in-flight guard.
   - `RunPartsWatchJob` — base class with the env-override gotcha below
-- **CRITICAL — subprocess env override**: when Laravel shells out, `Process::env([...])` must explicitly set `DATABASE_URL` and `DB_SCHEMA=watcher`. Otherwise the child process inherits Laravel's `DB_SCHEMA=console` and the crawler hits the wrong schema (e.g. `console.sources` doesn't exist). See `RunPartsWatchJob.php`.
+- **CRITICAL — subprocess env override**: when Laravel shells out, `Process::env([...])` must explicitly set `DATABASE_URL` and `DB_SCHEMA=watcher`. Otherwise the child process inherits Laravel's `DB_SCHEMA=console` and the crawler hits the wrong schema (e.g. `console.sources` doesn't exist). `RunPartsWatchJob` builds `DATABASE_URL` from `WATCHER_DB_USERNAME / WATCHER_DB_PASSWORD / WATCHER_DB_HOST / WATCHER_DB_PORT / WATCHER_DB_DATABASE` (each falling back to the corresponding `DB_*` if unset). See `RunPartsWatchJob.php`.
+- **`SyncRun.output_excerpt` keeps only the last 4000 chars.** A SQLAlchemy bulk-insert traceback's bind-param dump can fill the buffer on its own and hide the exception class at the head. To recover the full traceback, rerun the same `parts-watch` command directly: `source .venv/bin/activate && parts-watch <cmd> 2>&1 | tee /tmp/<cmd>.log`.
 - **Watch list semantics**: every `/parts/live-search` POST `firstOrCreate`s a `parts_watches` row at high priority (re-promotes if previously revoked). "Revoke priority" sets `is_high_priority=false` + `priority_revoked_at=now()` but **keeps the row**. Only the watch-sweep pass in `services/crawl.py` re-crawls high-priority rows.
 - **Pagination**: `AppServiceProvider::boot()` calls `Paginator::useBootstrapFive()`. Velzon is Bootstrap 5 — without this, Laravel's default Tailwind paginator markup renders broken.
 - **Routes**: any custom route must come **above** the catch-all `Route::get('{any}', ...)` in `routes/web.php` or it'll be swallowed.
@@ -177,7 +179,7 @@ MANUAL_SEARCH_ENABLED=true
 HTTP_TIMEOUT_SECONDS=20   HTTP_RETRIES=3   HTTP_RATE_LIMIT_PER_SECOND=3
 ```
 
-`console/.env` (Laravel) needs the same DB plus `DB_SCHEMA=console`, `WATCHER_DB_SCHEMA=watcher`, `ADMIN_EMAIL`/`ADMIN_PASSWORD`, and `QUEUE_CONNECTION=database`.
+`console/.env` (Laravel) needs the same DB plus `DB_SCHEMA=console`, `WATCHER_DB_SCHEMA=watcher`, the `WATCHER_DB_*` connection vars (`USERNAME` / `PASSWORD` / `HOST` / `PORT` / `DATABASE` — each falls back to `DB_*` if unset; required by `RunPartsWatchJob`'s subprocess env override), `ADMIN_EMAIL` / `ADMIN_PASSWORD`, and `QUEUE_CONNECTION=database`.
 
 ### Distributed worker deployment
 
