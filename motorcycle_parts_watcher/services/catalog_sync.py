@@ -17,6 +17,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from motorcycle_parts_watcher.config import Settings
@@ -361,9 +362,22 @@ async def _sync_md_variants(
 
 
 def _upsert_bike(session: Session, row: _BikeRow) -> None:
-    existing = session.scalar(select(BikeCatalog).where(BikeCatalog.catalog_key == row.catalog_key))
-    if existing is None:
-        session.add(BikeCatalog(
+    now = datetime.now(UTC)
+    update_cols: dict = dict(
+        model=row.model,
+        model_slug=row.model_slug,
+        year_start=row.year_start,
+        year_end=row.year_end,
+        updated_at=now,
+    )
+    if row.displacement_cc is not None:
+        update_cols["displacement_cc"] = row.displacement_cc
+    if row.webike_url:
+        update_cols["webike_url"] = row.webike_url
+
+    stmt = (
+        pg_insert(BikeCatalog)
+        .values(
             make=row.make,
             model=row.model,
             model_slug=row.model_slug,
@@ -372,16 +386,15 @@ def _upsert_bike(session: Session, row: _BikeRow) -> None:
             displacement_cc=row.displacement_cc,
             webike_url=row.webike_url,
             catalog_key=row.catalog_key,
-        ))
-    else:
-        existing.model = row.model
-        existing.model_slug = row.model_slug
-        existing.year_start = row.year_start
-        existing.year_end = row.year_end
-        if row.displacement_cc is not None:
-            existing.displacement_cc = row.displacement_cc
-        if row.webike_url:
-            existing.webike_url = row.webike_url
+            created_at=now,
+            updated_at=now,
+        )
+        .on_conflict_do_update(
+            constraint="uq_bike_catalog_key",
+            set_=update_cols,
+        )
+    )
+    session.execute(stmt)
 
 
 def run_sync(session: Session, settings: Settings) -> SyncStats:
