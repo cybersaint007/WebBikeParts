@@ -34,7 +34,9 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
              storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache \
-    && mkdir -p public/bike-images && chmod 775 public/bike-images
+    && mkdir -p public/bike-images \
+    && chown www-data:www-data public/bike-images \
+    && chmod 775 public/bike-images
 
 COPY docker/php/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
 COPY docker/entrypoint-console.sh /usr/local/bin/entrypoint.sh
