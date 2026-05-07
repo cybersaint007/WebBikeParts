@@ -218,6 +218,7 @@ parts-watch worker --worker-id central-1 \
 | [`CRAWLER_ARCHITECTURE.md`](CRAWLER_ARCHITECTURE.md) | End-to-end runtime: producer/worker/queue/ingest, data model, operational runbook |
 | [`ADAPTERS.md`](ADAPTERS.md) | Per-source HTTP/parse details, status, and implementation path for each stub |
 | [`MOTORCYCLE_PARTS_WATCHER_DATABASE.md`](MOTORCYCLE_PARTS_WATCHER_DATABASE.md) | ER diagram and sample queries |
+| [`DEPLOYMENT.md`](DEPLOYMENT.md) | Production deployment: Nginx, PHP-FPM, systemd units, JP worker setup |
 | [`CLAUDE.md`](CLAUDE.md) | Project conventions for AI-assisted development |
 
 ## License
