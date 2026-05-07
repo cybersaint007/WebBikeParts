@@ -14,8 +14,11 @@ class ExampleTest extends TestCase
      */
     public function test_example()
     {
+        // Root redirects to /login for unauthenticated users
         $response = $this->get('/');
+        $response->assertRedirect('/login');
 
-        $response->assertStatus(200);
+        // Login page itself is publicly accessible
+        $this->get('/login')->assertStatus(200);
     }
 }
