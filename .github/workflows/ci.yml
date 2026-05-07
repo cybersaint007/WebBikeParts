@@ -107,7 +107,7 @@ jobs:
           restore-keys: composer-
 
       - name: Install Composer dependencies
-        run: composer install --no-dev --no-interaction --no-progress
+        run: composer install --no-interaction --no-progress
 
       - name: Prepare .env
         run: |
