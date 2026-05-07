@@ -22,22 +22,6 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Install PHP deps first (cached layer unless composer.json/lock changes)
-COPY console/composer.json console/composer.lock ./
-RUN composer install --no-dev --no-interaction --no-scripts --optimize-autoloader
-
-# Copy application (public/build is tracked in git — no npm step needed)
-COPY console/ .
-
-# Init storage layout and permissions
-RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
-             storage/framework/views storage/logs bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache \
-    && mkdir -p public/bike-images \
-    && chown www-data:www-data public/bike-images \
-    && chmod 775 public/bike-images
-
 COPY docker/php/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
 COPY docker/entrypoint-console.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

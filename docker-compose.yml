@@ -8,7 +8,10 @@ services:
     env_file: console/.env
     command: php artisan migrate --force
     volumes:
+      - ./console:/var/www/html
+      - console_vendor:/var/www/html/vendor
       - php_storage:/var/www/html/storage
+      - bike_images:/var/www/html/public/bike-images
     networks:
       - postgresql_pgnet
     restart: "no"
@@ -32,6 +35,8 @@ services:
       dockerfile: Dockerfile.console
     env_file: console/.env
     volumes:
+      - ./console:/var/www/html
+      - console_vendor:/var/www/html/vendor
       - php_storage:/var/www/html/storage
       # bike_images shared with nginx; mounted at same container path as nginx alias
       - bike_images:/var/www/html/public/bike-images
@@ -67,6 +72,8 @@ services:
     env_file: console/.env
     command: php artisan queue:work --queue=sync --sleep=3 --tries=1 --timeout=1800
     volumes:
+      - ./console:/var/www/html
+      - console_vendor:/var/www/html/vendor
       - php_storage:/var/www/html/storage
     depends_on:
       php-migrate:
@@ -83,6 +90,8 @@ services:
     env_file: console/.env
     command: /bin/sh -c 'while true; do php artisan schedule:run --no-interaction; sleep 60; done'
     volumes:
+      - ./console:/var/www/html
+      - console_vendor:/var/www/html/vendor
       - php_storage:/var/www/html/storage
     depends_on:
       php-migrate:
@@ -117,3 +126,4 @@ networks:
 volumes:
   php_storage:
   bike_images:
+  console_vendor:
