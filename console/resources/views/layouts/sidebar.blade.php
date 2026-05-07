@@ -3,7 +3,7 @@
     <!-- LOGO -->
     <div class="navbar-brand-box">
         <!-- Dark Logo-->
-        <a href="{{ route('my-bikes.index') }}" class="logo logo-dark text-dark text-decoration-none">
+        <a href="{{ route('root') }}" class="logo logo-dark text-dark text-decoration-none">
             <span class="logo-sm">
                 <i class="ri-tools-fill fs-4"></i>
             </span>
@@ -12,7 +12,7 @@
             </span>
         </a>
         <!-- Light Logo-->
-        <a href="{{ route('my-bikes.index') }}" class="logo logo-light text-white text-decoration-none">
+        <a href="{{ route('root') }}" class="logo logo-light text-white text-decoration-none">
             <span class="logo-sm">
                 <i class="ri-tools-fill fs-4"></i>
             </span>
@@ -34,6 +34,12 @@
             <ul class="navbar-nav" id="navbar-nav">
                 @auth
                 <li class="menu-title"><span>{{ __('Crawler') }}</span></li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link {{ request()->routeIs('root') ? 'active' : '' }}"
+                       href="{{ route('root') }}">
+                        <i class="ri-dashboard-line"></i> <span>{{ __('Dashboard') }}</span>
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link menu-link {{ request()->routeIs('parts.*') ? 'active' : '' }}"
                        href="{{ route('parts.index') }}">

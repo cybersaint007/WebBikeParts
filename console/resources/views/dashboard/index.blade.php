@@ -210,7 +210,9 @@
                             </thead>
                             <tbody>
                                 @foreach ($topWatches as $w)
-                                    @php($wCat = $w->bike_catalog_id ? $watchBikes->get($w->bike_catalog_id) : null)
+                                    @php
+                                        $wCat = $w->bike_catalog_id ? $watchBikes->get($w->bike_catalog_id) : null;
+                                    @endphp
                                     <tr>
                                         <td>
                                             <a href="{{ route('parts.index', ['q' => $w->query]) }}" class="fw-medium">
