@@ -22,8 +22,8 @@
                 <div class="col-lg-12">
                     <div class="text-center mt-sm-5 mb-4 text-white-50">
                         <div>
-                            <a href="index" class="d-inline-block auth-logo">
-                                <img src="{{ URL::asset('build/images/logo-light.png')}}" alt="" height="20">
+                            <a href="/" class="d-inline-block auth-logo text-white text-decoration-none">
+                                <span class="fw-bold fs-4"><i class="ri-tools-fill me-1"></i>Bike Parts</span>
                             </a>
                         </div>
                     </div>
