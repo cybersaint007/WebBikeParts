@@ -52,6 +52,7 @@ class BikeCatalog(Base):
     year_end: Mapped[int] = mapped_column(nullable=False)
     displacement_cc: Mapped[int | None] = mapped_column(Integer, nullable=True)
     webike_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     catalog_key: Mapped[str] = mapped_column(String(200), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)

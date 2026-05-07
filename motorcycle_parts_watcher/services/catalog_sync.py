@@ -105,6 +105,7 @@ class _BikeRow:
     year_end: int
     displacement_cc: int | None
     webike_url: str | None
+    image_url: str | None = None
 
     @property
     def catalog_key(self) -> str:
@@ -261,6 +262,18 @@ _VARIANT_LINK_RE = re.compile(
 )
 
 
+def _extract_bike_image(html: str) -> str | None:
+    """Return the first CDN image URL from a webike.tw /md/{id} page, or None."""
+    soup = BeautifulSoup(html, "lxml")
+    img = soup.find("img", src=lambda s: s and "/moto_img/v3/" in s)
+    if img:
+        src = img.get("src", "")
+        if src.startswith("//"):
+            src = "https:" + src
+        return src or None
+    return None
+
+
 def _parse_md_variants(html: str, base_md_url: str, current_year: int) -> list[tuple[int, int, str]]:
     """Pull `(year_start, year_end, deep_url)` rows from a /md/{id} model-line page.
 
@@ -347,6 +360,7 @@ async def _sync_md_variants(
         print(f"[catalog-sync] variant fetch failed {umbrella.webike_url}: {exc}", flush=True)
         return 0
 
+    image_url = _extract_bike_image(html)
     variants = _parse_md_variants(html, umbrella.webike_url, current_year)
     for year_start, year_end, deep_url in variants:
         _upsert_bike(session, _BikeRow(
@@ -357,6 +371,7 @@ async def _sync_md_variants(
             year_end=year_end,
             displacement_cc=umbrella.displacement_cc,
             webike_url=deep_url,
+            image_url=image_url,
         ))
     return len(variants)
 
@@ -374,6 +389,8 @@ def _upsert_bike(session: Session, row: _BikeRow) -> None:
         update_cols["displacement_cc"] = row.displacement_cc
     if row.webike_url:
         update_cols["webike_url"] = row.webike_url
+    if row.image_url:
+        update_cols["image_url"] = row.image_url
 
     stmt = (
         pg_insert(BikeCatalog)
@@ -385,6 +402,7 @@ def _upsert_bike(session: Session, row: _BikeRow) -> None:
             year_end=row.year_end,
             displacement_cc=row.displacement_cc,
             webike_url=row.webike_url,
+            image_url=row.image_url,
             catalog_key=row.catalog_key,
             created_at=now,
             updated_at=now,

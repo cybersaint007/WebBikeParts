@@ -62,6 +62,17 @@
                                 @endphp
                                 <div class="col-md-6 mb-3">
                                     <div class="card border h-100 mb-0">
+                                        @if ($cat?->image_url)
+                                            <img src="{{ $cat->image_url }}"
+                                                 alt="{{ $cat?->displayLabel() }}"
+                                                 class="card-img-top"
+                                                 style="height:160px;object-fit:cover;">
+                                        @else
+                                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+                                                 style="height:160px;">
+                                                <i class="ri-motorbike-line text-muted" style="font-size:3rem;"></i>
+                                            </div>
+                                        @endif
                                         <div class="card-body">
                                             <h6 class="mb-1">
                                                 {{ $cat ? $cat->displayLabel() : __('Unknown bike (catalog id :id)', ['id' => $ub->bike_catalog_id]) }}

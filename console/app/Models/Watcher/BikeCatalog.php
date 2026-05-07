@@ -13,7 +13,7 @@ class BikeCatalog extends Model
 
     protected $fillable = [
         'make', 'model', 'model_slug', 'year_start', 'year_end',
-        'displacement_cc', 'webike_url', 'catalog_key',
+        'displacement_cc', 'webike_url', 'image_url', 'catalog_key',
     ];
 
     public static function availableMakes(): Collection
