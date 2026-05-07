@@ -20,6 +20,7 @@ from motorcycle_parts_watcher.adapters import (
     RakutenAdapter,
     WebikeAdapter,
     WebikeJpAdapter,
+    WebikeSearchAdapter,
     YahooAuctionsAdapter,
 )
 from motorcycle_parts_watcher.bikes import BikeRef, load_active_bikes, load_bike_by_key
@@ -45,6 +46,7 @@ def _build_adapters(settings: Settings) -> list:
         YahooAuctionsAdapter(settings),
         BuyeeAdapter(settings),
         WebikeAdapter(settings),
+        WebikeSearchAdapter(settings),
         WebikeJpAdapter(settings),
         CroooberAdapter(settings),
         MercariAdapter(settings),

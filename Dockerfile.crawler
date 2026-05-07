@@ -10,7 +10,9 @@ WORKDIR /app
 # A stub __init__.py lets setuptools resolve the package without real source.
 COPY pyproject.toml ./
 RUN mkdir -p motorcycle_parts_watcher && touch motorcycle_parts_watcher/__init__.py && \
-    pip install --no-cache-dir "."
+    pip install --no-cache-dir "." && \
+    playwright install chromium --with-deps && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy real source (overwrites stub; deps layer above stays cached)
 COPY motorcycle_parts_watcher/ ./motorcycle_parts_watcher/

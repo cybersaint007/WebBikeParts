@@ -42,6 +42,7 @@ Status legend:
 | Yahoo Auctions JP | `yahoo_auctions` | **Live** | HTML scrape | Best for vintage JDM bikes |
 | Buyee | `buyee` | **Live** | HTML scrape | JP proxy; same Yahoo Auctions inventory but reachable from non-JP IPs and renders English |
 | Webike TW | `webike` | **Live** | HTML scrape | Bike-keyed (`/md/{ID}` pages) |
+| Webike TW search | `webike_search` | **Live** | Playwright (headless Chromium) | Full-catalog keyword search via `/search?q=…` |
 | Monotaro | `monotaro` | **Live (no prices)** | HTML scrape | Industrial parts catalog |
 | Manual search | `manual_search` | **Live** | Local fallback | Query-driven only |
 | Webike JP | `webike_jp` | Stub | — | Geo-redirected to webike.tw |
@@ -164,6 +165,44 @@ The catalog sync (`parts-watch sync-catalog`) is what populates `bike_catalog` r
 
 ---
 
+### Webike TW search (`webike_search`)
+
+**What it pulls.** All priced products matching a keyword on `webike.tw/search?q=…` — the full catalog, not just the ~20-30 products on a single model page. Paginates up to 5 pages (configurable via `MAX_PAGES` in the adapter).
+
+**How it works.** Launches a headless Chromium browser via Playwright, navigates to the search URL, waits for `networkidle` (JS rendering complete), then parses the rendered HTML with BeautifulSoup. Uses the same schema.org microdata parse (`meta[itemprop=price]` → `/sd/{ID}` anchors) as `WebikeAdapter`. When `query` is `None` (bike sweep), searches using `bike.search_terms[0]` (e.g. `"Suzuki Katana 1100 1990"`). When `query` is set (live search or watch sweep), uses the already-translated query string directly.
+
+Pagination is detected by looking for a `page=N+1` link in the rendered HTML or a `rel="next"` / Bootstrap next-button element.
+
+**Deduplication note.** `source_name = "webike_search"` is distinct from `source_name = "webike"`, so a product appearing in both the model-page scrape and the keyword search generates two rows. The URL UNIQUE constraint in `watcher.listings` prevents physical duplicates of the same URL regardless of source.
+
+**Cloudflare / IP requirement.** `webike.tw` is behind Cloudflare. Requests from data-center or VPS IPs hit a bot-challenge page and return no results. The adapter detects this, logs a `WARNING`, and returns `[]` rather than crashing. To get real results you must route through a residential IP:
+
+```env
+WEBIKE_PROXY_URL=socks5://user:pass@proxy.example.com:1080
+# or
+WEBIKE_PROXY_URL=http://user:pass@proxy.example.com:8080
+```
+
+Residential proxy providers: BrightData, Oxylabs, Smartproxy. If you run the crawler from a home connection (not a VPS), no proxy is needed.
+
+**Requirements.** Playwright must be installed and the Chromium browser binary must be present:
+
+```bash
+pip install playwright
+playwright install chromium --with-deps
+```
+
+The `Dockerfile.crawler` already includes these steps.
+
+**Configuration.**
+
+```env
+WEBIKE_SEARCH_ENABLED=true
+WEBIKE_PROXY_URL=socks5://user:pass@proxy.example.com:1080   # required from VPS/cloud
+```
+
+---
+
 ### Monotaro (`monotaro`)
 
 **What it pulls.** Industrial / OEM parts matching the bike name or query: oil filters, brake pads, air filters, bolts, electrical relays. Mostly Japanese sellers, JPY pricing on the product detail pages (not on search).
@@ -234,6 +273,8 @@ EBAY_MARKETPLACE_IDS=EBAY_US,EBAY_GB,EBAY_DE,EBAY_AU,EBAY_IT
 YAHOO_AUCTIONS_ENABLED=true
 BUYEE_ENABLED=true
 WEBIKE_ENABLED=true
+WEBIKE_SEARCH_ENABLED=true    # requires playwright + chromium binary
+WEBIKE_PROXY_URL=             # residential proxy for Cloudflare bypass (socks5://user:pass@host:port)
 MONOTARO_ENABLED=true
 MANUAL_SEARCH_ENABLED=true
 
@@ -324,6 +365,7 @@ Each adapter declares a `preferred_query_lang` class attribute:
 |---|---|
 | `EbayAdapter` | `"en"` |
 | `WebikeAdapter` | `"zh-TW"` |
+| `WebikeSearchAdapter` | `"zh-TW"` |
 | `YahooAuctionsAdapter` | `"ja"` |
 | `BuyeeAdapter` | `"ja"` |
 | `MonotaroAdapter` | `"ja"` |
