@@ -32,6 +32,7 @@ COPY console/ .
 # Init storage layout and permissions
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
              storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache \
     && mkdir -p public/bike-images && chmod 775 public/bike-images
 
@@ -41,4 +42,4 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 9000
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["php-fpm"]
+CMD ["php-fpm", "-F"]

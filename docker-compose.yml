@@ -1,14 +1,14 @@
 services:
 
   # ── one-shot: Laravel schema migrations ────────────────────────────────────
-  console-migrate:
+  php-migrate:
     build:
       context: .
       dockerfile: Dockerfile.console
     env_file: console/.env
     command: php artisan migrate --force
     volumes:
-      - console_storage:/var/www/html/storage
+      - php_storage:/var/www/html/storage
     networks:
       - postgresql_pgnet
     restart: "no"
@@ -26,17 +26,17 @@ services:
     restart: "no"
 
   # ── Laravel PHP-FPM ────────────────────────────────────────────────────────
-  console:
+  php:
     build:
       context: .
       dockerfile: Dockerfile.console
     env_file: console/.env
     volumes:
-      - console_storage:/var/www/html/storage
+      - php_storage:/var/www/html/storage
       # bike_images shared with nginx; mounted at same container path as nginx alias
       - bike_images:/var/www/html/public/bike-images
     depends_on:
-      console-migrate:
+      php-migrate:
         condition: service_completed_successfully
     networks:
       - postgresql_pgnet
@@ -54,7 +54,7 @@ services:
       # read-only public/ bind-mount above; served via /bike-images/ alias
       - bike_images:/var/www/bike-images
     depends_on:
-      - console
+      - php
     networks:
       - postgresql_pgnet
     restart: unless-stopped
@@ -67,9 +67,9 @@ services:
     env_file: console/.env
     command: php artisan queue:work --queue=sync --sleep=3 --tries=1 --timeout=1800
     volumes:
-      - console_storage:/var/www/html/storage
+      - php_storage:/var/www/html/storage
     depends_on:
-      console-migrate:
+      php-migrate:
         condition: service_completed_successfully
     networks:
       - postgresql_pgnet
@@ -83,9 +83,9 @@ services:
     env_file: console/.env
     command: /bin/sh -c 'while true; do php artisan schedule:run --no-interaction; sleep 60; done'
     volumes:
-      - console_storage:/var/www/html/storage
+      - php_storage:/var/www/html/storage
     depends_on:
-      console-migrate:
+      php-migrate:
         condition: service_completed_successfully
     networks:
       - postgresql_pgnet
@@ -115,5 +115,5 @@ networks:
     external: true
 
 volumes:
-  console_storage:
+  php_storage:
   bike_images:
