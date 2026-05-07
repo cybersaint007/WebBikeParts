@@ -16,6 +16,8 @@ The two pieces are not independent — the console drives crawl scope (users pic
 - `CRAWLER_ARCHITECTURE.md` — end-to-end crawler runtime: producer/worker/queue/ingest/adapters/Laravel bridge, plus an operational runbook.
 - `ADAPTERS.md` — per-source HTTP/parse details and the status (live vs blocked) of each adapter.
 - `MOTORCYCLE_PARTS_WATCHER_DATABASE.md` — DB ER diagram + sample queries (predates `bike_catalog` / `categories`).
+- `DEPLOYMENT.md` — step-by-step production setup: system packages, Postgres, Nginx, systemd units for Laravel queue worker and crawler worker, scheduler cron, JP geo-worker setup.
+- `AGENTS.md` — coding style, naming conventions, and commit/PR guidelines for AI coding agents.
 
 ---
 
@@ -73,7 +75,7 @@ The producer and worker are decoupled by the queue so workers can run on geo-dis
 - **`services/crawl.py`** — split into:
   - `CrawlProducer` — `enqueue_for_bike` / `enqueue_all` / `enqueue_watches`. Translates the query *per adapter* via `utils/i18n.py` at enqueue time, so the worker is dumb about translation. The producer is the only side that imports the translation dictionary.
   - `CrawlWorker` — `run_once` / `run_forever`. Claims one job filtered by `--adapters` allowlist, runs the adapter, ingests results via `IngestService`, marks the job complete/failed. Periodically calls `release_stale` so a crashed worker's locked rows return to `pending`.
-- **`services/catalog_sync.py`** — webike.tw scraper that populates `watcher.bike_catalog` and `watcher.categories`. Three-pass: (1) scrape the home page for `/mf/{MAKE}/` links to get the full maker list (14 as of 2026-05; `DEFAULT_MAKES` is the offline fallback); (2) walk `/mf/{MAKE}/{cc}` index pages to upsert one umbrella row per model with `year_start=year_end=0`; (3) for each umbrella, fetch its `/md/{id}` detail page and upsert one row per `年式 : YYYY ~ YYYY` year-range variant (open-ended `~ ` end-years default to the current year). `BikeCatalog::yearsForModel` returns the umbrella's `0` only when no real variants exist. The maker list used to be hardcoded via `WEBIKE_CATALOG_MAKES`; that env var is no longer read (commit `3b5bafb`).
+- **`services/catalog_sync.py`** — webike.tw scraper that populates `watcher.bike_catalog` and `watcher.categories`. Three-pass: (1) scrape the home page for `/mf/{MAKE}/` links to get the full maker list (14 as of 2026-05; `DEFAULT_MAKES` is the offline fallback); (2) walk `/mf/{MAKE}/{cc}` index pages to upsert one umbrella row per model with `year_start=year_end=0`; (3) for each umbrella, fetch its `/md/{id}` detail page and upsert one row per `年式 : YYYY ~ YYYY` year-range variant (open-ended `~ ` end-years default to the current year), also extracting the first CDN image URL into `image_url`. `BikeCatalog::yearsForModel` returns the umbrella's `0` only when no real variants exist. The maker list used to be hardcoded via `WEBIKE_CATALOG_MAKES`; that env var is no longer read (commit `3b5bafb`). `image_url` is only written when the detail page yields an image — existing non-null values are not cleared if the page yields nothing.
 - **`utils/http.py`** — shared async client factory + `AsyncRateLimiter` + `with_retries`. Adapters must use this, not raw `httpx`.
 
 ### Queue conventions
@@ -123,13 +125,14 @@ php artisan queue:work --queue=sync
 - **Auth**: registration disabled (`Auth::routes(['register' => false])`). Admin seeded by `AdminUserSeeder` from `ADMIN_EMAIL`/`ADMIN_PASSWORD`. Default: `admin@example.com` / `changeme123`.
 - **Queued jobs** under `app/Jobs/` all shell out to `parts-watch`. The CLI now *enqueues* into `watcher.crawl_jobs` and (for `crawl` / `search`) blocks until the queued jobs hit a terminal state, so Laravel's `SyncRun` semantics are preserved:
   - `SyncWebikeCatalogJob` — `parts-watch sync-catalog` (unchanged)
-  - `CrawlBikeJob` — `parts-watch crawl --bike <catalog_key>`, dispatched from `MyBikesController@store`. Will time out if no worker is running for the required adapters.
+  - `CrawlBikeJob` — `parts-watch crawl --bike <catalog_key>`, dispatched from `MyBikesController@store`. Times out if no worker is running for the required adapters.
   - `LiveSearchJob` — `parts-watch search --query <q> --bike-key …`
   - `CrawlAllJob` — `parts-watch crawl-all`, dispatched **hourly** by the scheduler (`Console\Kernel::schedule`). Skipped if a previous `crawl_all` SyncRun is still queued/running, so a long sweep doesn't pile up duplicates.
   - `CrawlWatchesJob` — `parts-watch crawl-watches`, dispatched hourly under the same in-flight guard.
   - `RunPartsWatchJob` — base class with the env-override gotcha below
 - **CRITICAL — subprocess env override**: when Laravel shells out, `Process::env([...])` must explicitly set `DATABASE_URL` and `DB_SCHEMA=watcher`. Otherwise the child process inherits Laravel's `DB_SCHEMA=console` and the crawler hits the wrong schema (e.g. `console.sources` doesn't exist). `RunPartsWatchJob` builds `DATABASE_URL` from `WATCHER_DB_USERNAME / WATCHER_DB_PASSWORD / WATCHER_DB_HOST / WATCHER_DB_PORT / WATCHER_DB_DATABASE` (each falling back to the corresponding `DB_*` if unset). See `RunPartsWatchJob.php`.
 - **`SyncRun.output_excerpt` keeps only the last 4000 chars.** A SQLAlchemy bulk-insert traceback's bind-param dump can fill the buffer on its own and hide the exception class at the head. To recover the full traceback, rerun the same `parts-watch` command directly: `source .venv/bin/activate && parts-watch <cmd> 2>&1 | tee /tmp/<cmd>.log`.
+- **Bike images**: `watcher.bike_catalog.image_url` (added in migration `0006_bike_catalog_image`) is written by two independent paths: (a) `catalog_sync.py` during the `/md/{id}` pass, and (b) `MyBikesController` via `refreshImage` (scrapes DuckDuckGo image search with a vqd token handshake) or `uploadImage` (stores the file under `public/bike-images/<catalog_key>-<timestamp>.<ext>` and saves a root-relative URL). Both update the `BikeCatalog` model on the `pgsql_watcher` connection. The image is never cleared by `catalog_sync` if the detail page yields nothing — only an explicit upload/refresh replaces it.
 - **Watch list semantics**: every `/parts/live-search` POST `firstOrCreate`s a `parts_watches` row at high priority (re-promotes if previously revoked). "Revoke priority" sets `is_high_priority=false` + `priority_revoked_at=now()` but **keeps the row**. Only the watch-sweep pass in `services/crawl.py` re-crawls high-priority rows.
 - **Pagination**: `AppServiceProvider::boot()` calls `Paginator::useBootstrapFive()`. Velzon is Bootstrap 5 — without this, Laravel's default Tailwind paginator markup renders broken.
 - **Routes**: any custom route must come **above** the catch-all `Route::get('{any}', ...)` in `routes/web.php` or it'll be swallowed.
@@ -160,8 +163,9 @@ php artisan queue:work --queue=sync
 ## Database
 
 - **PostgreSQL only** (`postgresql+psycopg://`). No SQLite.
+- PostgreSQL runs in a Docker container named `postgresql` (image `postgres:latest`), bound to `127.0.0.1:5432` and `100.85.170.113:5432`. The host's `postgresql` systemd service is **not** used. Data is bind-mounted from `/home/dockeradmin/system_sites/postgresql/data` on the host.
 - One DB, two schemas: `watcher` (Python/Alembic) + `console` (Laravel migrations).
-- Alembic migrations: `alembic/versions/` (`0001_initial_schema`, `0002_bike_catalog`, `0003_categories`, `0004_search_indexes` — `pg_trgm` GIN on `title`/`description`/`part_number`, `0005_crawl_jobs` — distributed-worker queue table).
+- Alembic migrations: `alembic/versions/` (`0001_initial_schema`, `0002_bike_catalog`, `0003_categories`, `0004_search_indexes` — `pg_trgm` GIN on `title`/`description`/`part_number`, `0005_crawl_jobs` — distributed-worker queue table, `0006_bike_catalog_image` — nullable `image_url` on `bike_catalog`).
 - Listings dedup: `(source_name, source_item_id)` UNIQUE, `url` UNIQUE, `content_hash` indexed.
 - Queue dedup: partial UNIQUE on `watcher.crawl_jobs (adapter, bike_catalog_key, COALESCE(query,''))` while `status IN ('pending','running')`.
 - See `MOTORCYCLE_PARTS_WATCHER_DATABASE.md` for the full ER + sample queries (note: predates `bike_catalog` and `categories`).
