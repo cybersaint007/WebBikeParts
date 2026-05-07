@@ -1176,7 +1176,7 @@
                             </div>
                             <div class="mt-4 fs-15">
                                 <p>Premium Multipurpose Admin & Dashboard Template</p>
-                                <p>You can build any type of web application like eCommerce, CRM, CMS, Project management apps, Admin Panels, etc using Velzon.</p>
+                                <p>You can build any type of web application like eCommerce, CRM, CMS, Project management apps, Admin Panels, etc using Bike Parts.</p>
                                 <ul class="list-inline mb-0 footer-social-link">
                                     <li class="list-inline-item">
                                         <a href="javascript: void(0);" class="avatar-xs d-block">
@@ -1264,7 +1264,7 @@
                                 <script>
                                     document.write(new Date().getFullYear())
 
-                                </script> © Velzon - Themesbrand
+                                </script> © Bike Parts - Themesbrand
                             </p>
                         </div>
                     </div>

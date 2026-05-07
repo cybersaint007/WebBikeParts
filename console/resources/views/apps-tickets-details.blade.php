@@ -189,7 +189,7 @@ userIdx: {}
                             </tr>
                             <tr>
                                 <td class="fw-medium">Project</td>
-                                <td>Velzon - Admin Dashboard</td>
+                                <td>Bike Parts - Admin Dashboard</td>
                             </tr>
                             <tr>
                                 <td class="fw-medium">Assigned To:</td>
@@ -270,7 +270,7 @@ userIdx: {}
                         </div>
                     </div>
                     <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1"><a href="javascript:void(0);">Velzon-admin.zip</a></h6>
+                        <h6 class="mb-1"><a href="javascript:void(0);">Bike Parts-admin.zip</a></h6>
                         <small class="text-muted">3.2 MB</small>
                     </div>
                     <div class="hstack gap-3 fs-16">
@@ -285,7 +285,7 @@ userIdx: {}
                         </div>
                     </div>
                     <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1"><a href="javascript:void(0);">Velzon-admin.ppt</a></h6>
+                        <h6 class="mb-1"><a href="javascript:void(0);">Bike Parts-admin.ppt</a></h6>
                         <small class="text-muted">4.5 MB</small>
                     </div>
                     <div class="hstack gap-3 fs-16">

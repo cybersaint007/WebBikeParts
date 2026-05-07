@@ -662,7 +662,7 @@
                         </tr>
                         <tr>
                             <td>VLZ-458</td>
-                            <td>Velzon v1.6.0</td>
+                            <td>Bike Parts v1.6.0</td>
                             <td><a href="#!">Add datatables</a></td>
                             <td>James Morris</td>
                             <td>
@@ -706,7 +706,7 @@
                         </tr>
                         <tr>
                             <td>VLZ-461</td>
-                            <td>Velzon v1.0.0</td>
+                            <td>Bike Parts v1.0.0</td>
                             <td><a href="#!">Form submit issue</a></td>
                             <td>Grace Coles</td>
                             <td>

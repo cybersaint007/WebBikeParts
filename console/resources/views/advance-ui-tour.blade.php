@@ -65,7 +65,7 @@
                                                     </div>
                                                 </div>
                                                 <h5>Free register</h5>
-                                                <p class="text-muted mb-0">Get your Free Velzon account now.</p>
+                                                <p class="text-muted mb-0">Get your Free Bike Parts account now.</p>
                                             </div>
                                         </div>
                                     </div>
@@ -79,7 +79,7 @@
                                                     </div>
                                                 </div>
                                                 <h5>Log in account</h5>
-                                                <p class="text-muted mb-0">Sign in to continue to Velzon.</p>
+                                                <p class="text-muted mb-0">Sign in to continue to Bike Parts.</p>
                                             </div>
                                         </div>
                                     </div>
@@ -93,7 +93,7 @@
                                                     </div>
                                                 </div>
                                                 <h5>Get Product</h5>
-                                                <p class="text-muted mb-0">Sign in to continue to Velzon.</p>
+                                                <p class="text-muted mb-0">Sign in to continue to Bike Parts.</p>
                                             </div>
                                         </div>
                                     </div>

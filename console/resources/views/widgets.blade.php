@@ -11,7 +11,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1')
-            Velzon
+            Bike Parts
         @endslot
         @slot('title')
             Widgets

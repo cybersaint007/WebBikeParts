@@ -65,7 +65,7 @@
                                     <div class="p-lg-5 p-4">
                                         <div>
                                             <h5 class="text-primary">Welcome Back !</h5>
-                                            <p class="text-muted">Sign in to continue to Velzon.</p>
+                                            <p class="text-muted">Sign in to continue to Bike Parts.</p>
                                         </div>
 
                                         <div class="mt-4">
@@ -159,7 +159,7 @@
                         <div class="text-center">
                             <script>
                                 document.write(new Date().getFullYear())
-                            </script> Velzon. Crafted with <i
+                            </script> Bike Parts. Crafted with <i
                                     class="mdi mdi-heart text-danger"></i> by Themesbrand</p>
                         </div>
                     </div>

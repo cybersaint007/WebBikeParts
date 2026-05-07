@@ -18,7 +18,7 @@
             <div class="px-4 mx-n4" data-simplebar style="height: calc(100vh - 468px);">
                 <ul class="to-do-menu list-unstyled" id="projectlist-data">
                     <li>
-                        <a data-bs-toggle="collapse" href="#velzonAdmin" class="nav-link fs-14 active">Velzon Admin & Dashboard</a>
+                        <a data-bs-toggle="collapse" href="#velzonAdmin" class="nav-link fs-14 active">Bike Parts Admin & Dashboard</a>
                         <div class="collapse show" id="velzonAdmin">
                             <ul class="mb-0 sub-menu list-unstyled ps-3 vstack gap-2 mb-2">
                                 <li>
@@ -105,7 +105,7 @@
                 </button>
             </div>
             <div class="col-sm order-3 order-sm-2 mt-3 mt-sm-0">
-                <h5 class="fw-semibold mb-0">Velzon Admin & Dashboard <span class="badge bg-primary align-bottom ms-2">v2.0.0</span></h5>
+                <h5 class="fw-semibold mb-0">Bike Parts Admin & Dashboard <span class="badge bg-primary align-bottom ms-2">v2.0.0</span></h5>
             </div>
 
             <div class="col-auto order-2 order-sm-3 ms-auto">

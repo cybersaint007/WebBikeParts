@@ -20,7 +20,7 @@
                                     </div>
                                     <div class="col-md">
                                         <div>
-                                            <h4 class="fw-bold">Velzon - Admin & Dashboard</h4>
+                                            <h4 class="fw-bold">Bike Parts - Admin & Dashboard</h4>
                                             <div class="hstack gap-3 flex-wrap">
                                                 <div><i class="ri-building-line align-bottom me-1"></i> Themesbrand</div>
                                                 <div class="vr"></div>
@@ -201,7 +201,7 @@
                                                             </div>
                                                             <div class="flex-grow-1 overflow-hidden">
                                                                 <h5 class="fs-14 mb-1"><a href="#"
-                                                                        class="text-body text-truncate d-block">Velzon
+                                                                        class="text-body text-truncate d-block">Bike Parts
                                                                         admin.ppt</a></h5>
                                                                 <div>2.4MB</div>
                                                             </div>
@@ -679,7 +679,7 @@
                                                 </div>
                                                 <div class="flex-grow-1 overflow-hidden">
                                                     <h5 class="fs-15 mb-1"><a href="#"
-                                                            class="text-body text-truncate d-block">Velzon-admin.ppt</a>
+                                                            class="text-body text-truncate d-block">Bike Parts-admin.ppt</a>
                                                     </h5>
                                                     <div>2.4MB</div>
                                                 </div>
@@ -1035,7 +1035,7 @@
                                                             </div>
                                                             <div class="ms-3 flex-grow-1">
                                                                 <h5 class="fs-14 mb-0"><a href="javascript:void(0);"
-                                                                        class="text-body">Velzon-logo.png</a></h5>
+                                                                        class="text-body">Bike Parts-logo.png</a></h5>
                                                             </div>
                                                         </div>
                                                     </td>

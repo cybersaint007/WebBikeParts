@@ -846,7 +846,7 @@
                             </div>
                             <div class="mt-4 fs-14">
                                 <p>Premium Multipurpose Admin & Dashboard Template</p>
-                                <p>You can build any type of web application like eCommerce, CRM, CMS, Project management apps, Admin Panels, etc using Velzon.</p>
+                                <p>You can build any type of web application like eCommerce, CRM, CMS, Project management apps, Admin Panels, etc using Bike Parts.</p>
                             </div>
                         </div>
                     </div>
@@ -898,7 +898,7 @@
                                 <script>
                                     document.write(new Date().getFullYear())
 
-                                </script> © Velzon - Themesbrand
+                                </script> © Bike Parts - Themesbrand
                             </p>
                         </div>
                     </div>

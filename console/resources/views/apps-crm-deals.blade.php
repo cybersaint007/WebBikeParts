@@ -925,7 +925,7 @@
                                 <img src="{{ URL::asset('build/images/users/avatar-2.jpg') }}" alt="" class="avatar-xs rounded-circle" />
                             </div>
                             <div class="flex-grow-1 ms-3">
-                                <h6 class="fs-15 mb-1">Velzon - Admin Dashboard</h6>
+                                <h6 class="fs-15 mb-1">Bike Parts - Admin Dashboard</h6>
                                 <p class="text-muted mb-0">$126.7k - 30 Dec, 2021</p>
                             </div>
                         </a>

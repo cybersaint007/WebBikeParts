@@ -804,7 +804,7 @@
                                                                                 </div>
                                                                                 <div class="flex-grow-1 ms-3">
                                                                                     <h6 class="fs-14 mb-1">
-                                                                                        Velzon admin
+                                                                                        Bike Parts admin
                                                                                         dashboard
                                                                                         templates layout
                                                                                         upload</h6>
@@ -1919,7 +1919,7 @@
                                                 <div class="d-flex">
                                                     <div class="flex-grow-1 text-muted overflow-hidden">
                                                         <h5 class="fs-15 text-truncate"><a href="#"
-                                                                class="text-body">Velzon Project</a>
+                                                                class="text-body">Bike Parts Project</a>
                                                         </h5>
                                                         <p class="text-muted text-truncate mb-0">Last
                                                             Update : <span class="fw-semibold text-body">11 hr
@@ -2674,7 +2674,7 @@
                                                                 </div>
                                                                 <div class="ms-3 flex-grow-1">
                                                                     <h6 class="fs-15 mb-0"><a
-                                                                            href="javascript:void(0);">Velzon-logo.png</a>
+                                                                            href="javascript:void(0);">Bike Parts-logo.png</a>
                                                                     </h6>
                                                                 </div>
                                                             </div>
