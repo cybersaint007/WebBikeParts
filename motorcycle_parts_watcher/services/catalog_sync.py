@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from typing import Iterable
 from urllib.parse import urljoin
 
+import httpx
 from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -124,10 +125,10 @@ def _slugify(text: str) -> str:
     return s.strip("-")
 
 
-async def _discover_makes(settings: Settings, limiter: AsyncRateLimiter) -> tuple[str, ...]:
+async def _discover_makes(settings: Settings, limiter: AsyncRateLimiter, client: httpx.AsyncClient) -> tuple[str, ...]:
     """Scrape the webike.tw home page for the full list of `/mf/{MAKE}/` slugs."""
     try:
-        html = await _fetch_html(f"{WEBIKE_BASE}/", settings, limiter)
+        html = await _fetch_html(f"{WEBIKE_BASE}/", settings, limiter, client)
     except Exception as exc:
         print(f"[catalog-sync] make discovery fetch failed: {exc}; falling back to defaults", flush=True)
         return DEFAULT_MAKES
@@ -147,30 +148,32 @@ async def sync_catalog(session: Session, settings: Settings) -> SyncStats:
 
     print("[catalog-sync] starting", flush=True)
     limiter = AsyncRateLimiter(settings.http_rate_limit_per_second)
-    makes = await _discover_makes(settings, limiter)
-    print(f"[catalog-sync] makes ({len(makes)} discovered): {', '.join(makes)}", flush=True)
 
-    # Categories first — cheap and synchronous.
-    upserted = _upsert_taxonomy(session)
-    stats.categories_upserted = upserted
-    print(f"[catalog-sync] categories upserted: {upserted}", flush=True)
-    session.commit()
+    async with build_async_client(settings) as client:
+        makes = await _discover_makes(settings, limiter, client)
+        print(f"[catalog-sync] makes ({len(makes)} discovered): {', '.join(makes)}", flush=True)
 
-    # Bikes — async fan-out per (make, cc bucket). Reuse the limiter from discovery.
-    # Two passes per bucket: collect umbrella rows from the index, then fetch each
-    # /md/{id} to materialise its year-range variants.
-    seen_keys: set[str] = set()
-    current_year = datetime.now(UTC).year
+        # Categories first — cheap and synchronous.
+        upserted = _upsert_taxonomy(session)
+        stats.categories_upserted = upserted
+        print(f"[catalog-sync] categories upserted: {upserted}", flush=True)
+        session.commit()
 
-    for make in makes:
-        for slug, cc in CC_BUCKETS:
+        # Bikes — concurrent fan-out across all (make, cc-bucket) pairs.
+        # asyncio is single-threaded so the shared session and seen_keys set are safe;
+        # there are no await points between the seen_keys check+add or between
+        # _upsert_bike calls, so neither can interleave with another coroutine.
+        seen_keys: set[str] = set()
+        current_year = datetime.now(UTC).year
+
+        async def _process_bucket(make: str, slug: str, cc: int | None) -> None:
             url = f"{WEBIKE_BASE}/mf/{make}/{slug}"
             try:
-                html = await _fetch_html(url, settings, limiter)
+                html = await _fetch_html(url, settings, limiter, client)
             except Exception as exc:
                 stats.fetch_errors += 1
                 print(f"[catalog-sync] fetch failed {url}: {exc}", flush=True)
-                continue
+                return
 
             umbrellas: list[_BikeRow] = []
             for bike_row in _parse_bike_index(html, make, cc, base_url=url):
@@ -181,18 +184,27 @@ async def sync_catalog(session: Session, settings: Settings) -> SyncStats:
                 stats.bikes_upserted += 1
                 umbrellas.append(bike_row)
 
-            session.commit()
+            # Fan out variant fetches for all umbrellas in this bucket concurrently.
+            counts = await asyncio.gather(
+                *[_sync_md_variants(session, settings, limiter, client, u, current_year) for u in umbrellas],
+                return_exceptions=True,
+            )
+            for r in counts:
+                if isinstance(r, int):
+                    stats.variants_upserted += r
 
-            for umbrella in umbrellas:
-                added = await _sync_md_variants(session, settings, limiter, umbrella, current_year)
-                stats.variants_upserted += added
             session.commit()
-
             print(
                 f"[catalog-sync] {make}/{slug}: cumulative bikes={stats.bikes_upserted} "
                 f"variants={stats.variants_upserted}",
                 flush=True,
             )
+
+        await asyncio.gather(*[
+            _process_bucket(make, slug, cc)
+            for make in makes
+            for slug, cc in CC_BUCKETS
+        ])
 
     print(
         f"[catalog-sync] done: bikes_upserted={stats.bikes_upserted} "
@@ -240,15 +252,14 @@ def _upsert_taxonomy(session: Session) -> int:
     return touched
 
 
-async def _fetch_html(url: str, settings: Settings, limiter: AsyncRateLimiter) -> str:
+async def _fetch_html(url: str, settings: Settings, limiter: AsyncRateLimiter, client: httpx.AsyncClient) -> str:
     headers = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"}
-    async with build_async_client(settings) as client:
-        await limiter.wait()
-        response = await with_retries(
-            lambda: client.get(url, headers=headers),
-            retries=settings.http_retries,
-            backoff_seconds=settings.http_retry_backoff_seconds,
-        )
+    await limiter.wait()
+    response = await with_retries(
+        lambda: client.get(url, headers=headers),
+        retries=settings.http_retries,
+        backoff_seconds=settings.http_retry_backoff_seconds,
+    )
     return response.text
 
 
@@ -343,6 +354,7 @@ async def _sync_md_variants(
     session: Session,
     settings: Settings,
     limiter: AsyncRateLimiter,
+    client: httpx.AsyncClient,
     umbrella: _BikeRow,
     current_year: int,
 ) -> int:
@@ -355,7 +367,7 @@ async def _sync_md_variants(
     if not umbrella.webike_url:
         return 0
     try:
-        html = await _fetch_html(umbrella.webike_url, settings, limiter)
+        html = await _fetch_html(umbrella.webike_url, settings, limiter, client)
     except Exception as exc:
         print(f"[catalog-sync] variant fetch failed {umbrella.webike_url}: {exc}", flush=True)
         return 0
