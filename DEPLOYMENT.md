@@ -4,6 +4,29 @@ Production deployment on Ubuntu 24.04 LTS. Assumes a single central server for t
 
 ---
 
+## 0. Installation checklist
+
+Complete these steps in order on a fresh server before reaching for any of the sections below.
+
+```
+[ ] 1.  Provision a server (see §1 for specs)
+[ ] 2.  Install system packages            § 2
+[ ] 3.  Create the Postgres database       § 3
+[ ] 4.  Create the deploy user + clone     § 4
+[ ] 5.  Set up the Python venv + .env      § 5
+[ ] 6.  Run Alembic migrations             § 5
+[ ] 7.  Seed sources + sync catalog        § 5
+[ ] 8.  Install Laravel deps + build       § 6
+[ ] 9.  Configure Laravel .env             § 6
+[ ] 10. Run Laravel migrations + seed      § 6
+[ ] 11. Configure Nginx + obtain TLS cert  § 7
+[ ] 12. Create and enable systemd units    § 8
+[ ] 13. Add scheduler cron entry           § 9
+[ ] 14. Verify everything is running       § 12
+```
+
+---
+
 ## 1. Server requirements
 
 | Resource | Minimum | Notes |

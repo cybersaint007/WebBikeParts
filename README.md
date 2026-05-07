@@ -211,6 +211,10 @@ parts-watch worker --worker-id central-1 \
 
 > Do not expose Postgres directly to the public internet. Use WireGuard or Tailscale for the private link.
 
+## Deployment
+
+For production setup (Ubuntu 24.04, Nginx + PHP-FPM, systemd, WireGuard for the JP worker) see **[DEPLOYMENT.md](DEPLOYMENT.md)**, which includes a step-by-step installation checklist.
+
 ## Documentation
 
 | File | Contents |
