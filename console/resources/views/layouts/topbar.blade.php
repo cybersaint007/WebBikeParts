@@ -4,21 +4,21 @@
             <div class="d-flex">
                 <!-- LOGO -->
                 <div class="navbar-brand-box horizontal-logo">
-                    <a href="index" class="logo logo-dark">
+                    <a href="{{ route('my-bikes.index') }}" class="logo logo-dark text-dark text-decoration-none">
                         <span class="logo-sm">
-                            <img src="{{ URL::asset('build/images/logo-sm.png') }}" alt="" height="22">
+                            <i class="ri-tools-fill fs-4"></i>
                         </span>
-                        <span class="logo-lg">
-                            <img src="{{ URL::asset('build/images/logo-dark.png') }}" alt="" height="17">
+                        <span class="logo-lg fw-bold fs-5">
+                            <i class="ri-tools-fill me-1"></i>Bike Parts
                         </span>
                     </a>
 
-                    <a href="index" class="logo logo-light">
+                    <a href="{{ route('my-bikes.index') }}" class="logo logo-light text-white text-decoration-none">
                         <span class="logo-sm">
-                            <img src="{{ URL::asset('build/images/logo-sm.png') }}" alt="" height="22">
+                            <i class="ri-tools-fill fs-4"></i>
                         </span>
-                        <span class="logo-lg">
-                            <img src="{{ URL::asset('build/images/logo-light.png') }}" alt="" height="17">
+                        <span class="logo-lg fw-bold fs-5">
+                            <i class="ri-tools-fill me-1"></i>Bike Parts
                         </span>
                     </a>
                 </div>
