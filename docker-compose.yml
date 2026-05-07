@@ -1,0 +1,119 @@
+services:
+
+  # ── one-shot: Laravel schema migrations ────────────────────────────────────
+  console-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.console
+    env_file: console/.env
+    command: php artisan migrate --force
+    volumes:
+      - console_storage:/var/www/html/storage
+    networks:
+      - postgresql_pgnet
+    restart: "no"
+
+  # ── one-shot: Alembic (watcher schema) migrations ──────────────────────────
+  crawler-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.crawler
+    env_file: .env
+    entrypoint: ["python3", "-m", "alembic"]
+    command: ["upgrade", "head"]
+    networks:
+      - postgresql_pgnet
+    restart: "no"
+
+  # ── Laravel PHP-FPM ────────────────────────────────────────────────────────
+  console:
+    build:
+      context: .
+      dockerfile: Dockerfile.console
+    env_file: console/.env
+    volumes:
+      - console_storage:/var/www/html/storage
+      # bike_images shared with nginx; mounted at same container path as nginx alias
+      - bike_images:/var/www/html/public/bike-images
+    depends_on:
+      console-migrate:
+        condition: service_completed_successfully
+    networks:
+      - postgresql_pgnet
+    restart: unless-stopped
+
+  # ── Nginx (static files + PHP proxy) ───────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx/console.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./console/public:/var/www/html/public:ro
+      # bike_images mounted at a separate path to avoid conflict with the
+      # read-only public/ bind-mount above; served via /bike-images/ alias
+      - bike_images:/var/www/bike-images
+    depends_on:
+      - console
+    networks:
+      - postgresql_pgnet
+    restart: unless-stopped
+
+  # ── Laravel queue worker ───────────────────────────────────────────────────
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile.console
+    env_file: console/.env
+    command: php artisan queue:work --queue=sync --sleep=3 --tries=1 --timeout=1800
+    volumes:
+      - console_storage:/var/www/html/storage
+    depends_on:
+      console-migrate:
+        condition: service_completed_successfully
+    networks:
+      - postgresql_pgnet
+    restart: unless-stopped
+
+  # ── Laravel scheduler (fires every 60 s) ──────────────────────────────────
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.console
+    env_file: console/.env
+    command: /bin/sh -c 'while true; do php artisan schedule:run --no-interaction; sleep 60; done'
+    volumes:
+      - console_storage:/var/www/html/storage
+    depends_on:
+      console-migrate:
+        condition: service_completed_successfully
+    networks:
+      - postgresql_pgnet
+    restart: unless-stopped
+
+  # ── Crawler worker (central adapters) ─────────────────────────────────────
+  crawler:
+    build:
+      context: .
+      dockerfile: Dockerfile.crawler
+    env_file: .env
+    command:
+      - worker
+      - --worker-id
+      - central-1
+      - --adapters
+      - ebay,buyee,webike,manual_search,yahoo_auctions,monotaro
+    depends_on:
+      crawler-migrate:
+        condition: service_completed_successfully
+    networks:
+      - postgresql_pgnet
+    restart: unless-stopped
+
+networks:
+  postgresql_pgnet:
+    external: true
+
+volumes:
+  console_storage:
+  bike_images:

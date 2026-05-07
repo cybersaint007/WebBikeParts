@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+reports/
+console/node_modules
+console/storage/framework/cache/data
+console/storage/framework/sessions
+console/storage/framework/views
+console/storage/logs
+console/bootstrap/cache
+console/public/bike-images
+*.md
