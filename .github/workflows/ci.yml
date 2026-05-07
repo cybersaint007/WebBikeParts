@@ -160,3 +160,35 @@ jobs:
 
       - name: Build crawler image
         run: docker build -f Dockerfile.crawler -t parts-watcher-crawler .
+
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    needs: [python, laravel, docker-build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/dockeradmin/fincosoft_sites/WebBikeParts
+
+            # Capture what is about to change before pulling
+            git fetch origin main
+            CHANGED=$(git diff HEAD origin/main --name-only 2>/dev/null || true)
+            git pull origin main
+
+            # Rebuild images when Dockerfiles, docker config, or crawler source changes;
+            # otherwise a restart is enough (entrypoint handles composer.lock changes).
+            if echo "$CHANGED" | grep -qE '(^|/)Dockerfile\.|^docker/|^pyproject\.toml|^alembic\.ini|^alembic/|^motorcycle_parts_watcher/'; then
+              echo "Infrastructure/crawler change — rebuilding images..."
+              docker compose up -d --build
+            else
+              echo "Code-only change — restarting PHP services..."
+              docker compose restart php queue scheduler
+            fi
