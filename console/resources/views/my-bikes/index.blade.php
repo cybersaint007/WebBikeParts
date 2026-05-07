@@ -62,17 +62,39 @@
                                 @endphp
                                 <div class="col-md-6 mb-3">
                                     <div class="card border h-100 mb-0">
-                                        @if ($cat?->image_url)
-                                            <img src="{{ $cat->image_url }}"
-                                                 alt="{{ $cat?->displayLabel() }}"
-                                                 class="card-img-top"
-                                                 style="height:160px;object-fit:cover;">
-                                        @else
-                                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
-                                                 style="height:160px;">
-                                                <i class="ri-motorbike-line text-muted" style="font-size:3rem;"></i>
-                                            </div>
-                                        @endif
+                                        <div class="position-relative" style="height:160px;overflow:hidden;border-radius:calc(var(--bs-card-border-radius, 0.375rem) - var(--bs-card-border-width, 1px)) calc(var(--bs-card-border-radius, 0.375rem) - var(--bs-card-border-width, 1px)) 0 0">
+                                            @if ($cat?->image_url)
+                                                <img src="{{ $cat->image_url }}"
+                                                     alt="{{ $cat?->displayLabel() }}"
+                                                     style="width:100%;height:100%;object-fit:contain;background:#f8f9fa;">
+                                            @else
+                                                <div class="bg-light d-flex align-items-center justify-content-center h-100">
+                                                    <i class="ri-motorbike-line text-muted" style="font-size:3rem;"></i>
+                                                </div>
+                                            @endif
+                                            @if ($cat)
+                                                <div class="position-absolute top-0 end-0 m-1 d-flex gap-1" style="z-index:1;">
+                                                    <label class="btn btn-sm btn-light border p-1 mb-0 upload-image-label"
+                                                           for="img-upload-{{ $cat->catalog_key }}"
+                                                           title="{{ __('Upload your own photo') }}"
+                                                           style="line-height:1;opacity:.75;cursor:pointer;">
+                                                        <i class="ri-upload-2-line"></i>
+                                                    </label>
+                                                    <input type="file" id="img-upload-{{ $cat->catalog_key }}"
+                                                           accept="image/*" class="d-none upload-image-input"
+                                                           data-upload-url="{{ route('my-bikes.upload-image', $cat->catalog_key) }}">
+                                                    @if ($cat->webike_url)
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-light border p-1 refresh-image-btn"
+                                                                data-refresh-url="{{ route('my-bikes.refresh-image', $cat->catalog_key) }}"
+                                                                title="{{ __('Search web for image') }}"
+                                                                style="line-height:1;opacity:.75;">
+                                                            <i class="ri-camera-line"></i>
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </div>
                                         <div class="card-body">
                                             <h6 class="mb-1">
                                                 {{ $cat ? $cat->displayLabel() : __('Unknown bike (catalog id :id)', ['id' => $ub->bike_catalog_id]) }}
@@ -191,6 +213,7 @@
 @endphp
 <script>
 const BIKES_I18N = @json($bikesI18n);
+const CSRF_TOKEN = '{{ csrf_token() }}';
 
 (function () {
     const makeSel  = document.getElementById('bike-make');
@@ -226,6 +249,88 @@ const BIKES_I18N = @json($bikesI18n);
         const opts = years.map(y => `<option value="${y}">${y === 0 ? BIKES_I18N.anyYear : y}</option>`);
         yearSel.innerHTML = '<option value="">' + BIKES_I18N.chooseYear + '</option>' + opts.join('');
         yearSel.disabled = false;
+    });
+
+    function swapImage(wrapper, url) {
+        let img = wrapper.querySelector('img');
+        if (img) {
+            img.src = url;
+        } else {
+            img = document.createElement('img');
+            img.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#f8f9fa;';
+            wrapper.querySelector('.bg-light')?.replaceWith(img);
+            img.src = url;
+        }
+    }
+
+    // Web search button — POSTs to the controller, swaps image on success.
+    document.querySelectorAll('.refresh-image-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            try {
+                const r = await fetch(btn.dataset.refreshUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' },
+                });
+                const data = await r.json();
+                if (data.image_url) {
+                    swapImage(btn.closest('.position-relative'), data.image_url);
+                    btn.innerHTML = '<i class="ri-check-line text-success"></i>';
+                    setTimeout(() => { btn.innerHTML = origHtml; btn.disabled = false; }, 2000);
+                } else {
+                    const msg = data.error || data.message || 'No image found';
+                    console.error('refresh-image server error:', msg, data);
+                    btn.title = msg;
+                    btn.innerHTML = '<i class="ri-error-warning-line text-danger"></i>';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                console.error('refresh-image error:', e);
+                btn.innerHTML = '<i class="ri-error-warning-line text-danger"></i>';
+                btn.title = String(e);
+                btn.disabled = false;
+            }
+        });
+    });
+
+    // Upload button — sends file via FormData, swaps image on success.
+    document.querySelectorAll('.upload-image-input').forEach(input => {
+        input.addEventListener('change', async () => {
+            if (!input.files.length) return;
+            const label = document.querySelector(`label[for="${input.id}"]`);
+            const origHtml = label.innerHTML;
+            label.style.pointerEvents = 'none';
+            label.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            const form = new FormData();
+            form.append('image', input.files[0]);
+            try {
+                const r = await fetch(input.dataset.uploadUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' },
+                    body: form,
+                });
+                const data = await r.json();
+                if (data.image_url) {
+                    swapImage(input.closest('.position-relative'), data.image_url);
+                    label.innerHTML = '<i class="ri-check-line text-success"></i>';
+                    setTimeout(() => { label.innerHTML = origHtml; label.style.pointerEvents = ''; }, 2000);
+                } else {
+                    const msg = data.error || data.message || 'Upload failed';
+                    console.error('upload-image error:', msg, data);
+                    label.title = msg;
+                    label.innerHTML = '<i class="ri-error-warning-line text-danger"></i>';
+                    label.style.pointerEvents = '';
+                }
+            } catch (e) {
+                console.error('upload-image error:', e);
+                label.innerHTML = '<i class="ri-error-warning-line text-danger"></i>';
+                label.title = String(e);
+                label.style.pointerEvents = '';
+            }
+            input.value = '';
+        });
     });
 
     // Poll any element marked data-sync-poll until the SyncRun reaches a terminal status.

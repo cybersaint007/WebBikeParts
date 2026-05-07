@@ -28,6 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/my-bikes', [MyBikesController::class, 'index'])->name('my-bikes.index');
     Route::post('/my-bikes', [MyBikesController::class, 'store'])->name('my-bikes.store');
     Route::delete('/my-bikes/{bike}', [MyBikesController::class, 'destroy'])->name('my-bikes.destroy');
+    Route::post('/my-bikes/{catalogKey}/refresh-image', [MyBikesController::class, 'refreshImage'])->name('my-bikes.refresh-image');
+    Route::post('/my-bikes/{catalogKey}/upload-image',  [MyBikesController::class, 'uploadImage'])->name('my-bikes.upload-image');
 
     Route::get('/api/catalog/makes',  [CatalogLookupController::class, 'makes']);
     Route::get('/api/catalog/models', [CatalogLookupController::class, 'models']);

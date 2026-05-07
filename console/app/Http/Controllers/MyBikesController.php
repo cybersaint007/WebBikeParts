@@ -7,6 +7,7 @@ use App\Models\SyncRun;
 use App\Models\UserBike;
 use App\Models\Watcher\BikeCatalog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class MyBikesController extends Controller
 {
@@ -98,6 +99,73 @@ class MyBikesController extends Controller
         return redirect()
             ->route('my-bikes.index')
             ->with('status', $message);
+    }
+
+    public function refreshImage(string $catalogKey)
+    {
+        $catalog = BikeCatalog::where('catalog_key', $catalogKey)->firstOrFail();
+
+        $make  = ucfirst(strtolower($catalog->make));
+        $model = $catalog->model;
+        $year  = match(true) {
+            $catalog->year_start > 0 && $catalog->year_start === $catalog->year_end => (string) $catalog->year_start,
+            $catalog->year_start > 0 => "{$catalog->year_start}-{$catalog->year_end}",
+            default => '',
+        };
+
+        $query    = trim("$make $model $year motorcycle");
+        $imageUrl = $this->duckDuckGoImage($query);
+
+        if (!$imageUrl) {
+            return response()->json(['error' => "No image found for {$catalog->displayLabel()}"], 404);
+        }
+
+        $catalog->image_url = $imageUrl;
+        $catalog->save();
+
+        return response()->json(['image_url' => $imageUrl]);
+    }
+
+    public function uploadImage(Request $request, string $catalogKey)
+    {
+        $catalog = BikeCatalog::where('catalog_key', $catalogKey)->firstOrFail();
+
+        $request->validate(['image' => ['required', 'image', 'max:8192']]);
+
+        $ext      = $request->file('image')->extension();
+        $filename = "{$catalogKey}-" . time() . ".{$ext}";
+        $dir      = public_path('bike-images');
+
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $request->file('image')->move($dir, $filename);
+        $url = '/bike-images/' . $filename;
+
+        $catalog->image_url = $url;
+        $catalog->save();
+
+        return response()->json(['image_url' => $url]);
+    }
+
+    private function duckDuckGoImage(string $query): ?string
+    {
+        $ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+        $home = Http::timeout(15)->withHeaders(['User-Agent' => $ua])
+            ->get('https://duckduckgo.com/', ['q' => $query, 'iax' => 'images', 'ia' => 'images']);
+        if (!preg_match('/vqd=([\d-]+)/', $home->body(), $m)) return null;
+
+        $r = Http::timeout(15)->withHeaders([
+            'User-Agent' => $ua,
+            'Referer'    => 'https://duckduckgo.com/',
+            'Accept'     => 'application/json, */*',
+        ])->get('https://duckduckgo.com/i.js', [
+            'q' => $query, 'o' => 'json', 'p' => '1', 'vqd' => $m[1], 'f' => ',,,', 'l' => 'us-en',
+        ]);
+
+        return $r->json('results.0.image');
     }
 
     public function destroy(UserBike $bike)
