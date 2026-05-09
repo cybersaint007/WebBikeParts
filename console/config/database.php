@@ -38,7 +38,7 @@ return [
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DATABASE_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
+            'host' => env('DB_HOST', '100.85.170.113'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'forge'),
             'username' => env('DB_USERNAME', 'forge'),
@@ -53,7 +53,7 @@ return [
 
         'pgsql_watcher' => [
             'driver' => 'pgsql',
-            'host' => env('WATCHER_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'host' => env('WATCHER_DB_HOST', env('DB_HOST', '100.85.170.113')),
             'port' => env('WATCHER_DB_PORT', env('DB_PORT', '5432')),
             'database' => env('WATCHER_DB_DATABASE', env('DB_DATABASE')),
             'username' => env('WATCHER_DB_USERNAME', env('DB_USERNAME')),
