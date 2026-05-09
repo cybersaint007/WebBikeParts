@@ -13,6 +13,7 @@ The two pieces are not independent — the console drives crawl scope (users pic
 
 ### Reference docs
 
+- `README.md` — project overview, install steps, adapter status table, CLI cheat sheet. Start here for the big picture.
 - `CRAWLER_ARCHITECTURE.md` — end-to-end crawler runtime: producer/worker/queue/ingest/adapters/Laravel bridge, plus an operational runbook.
 - `ADAPTERS.md` — per-source HTTP/parse details and the status (live vs blocked) of each adapter.
 - `MOTORCYCLE_PARTS_WATCHER_DATABASE.md` — DB ER diagram + sample queries (predates `bike_catalog` / `categories`).
@@ -104,7 +105,7 @@ cd console
 composer install
 npm install && npm run dev          # Vite dev server (or: npm run build)
 php artisan serve                   # Laravel dev server
-php artisan test                    # Pest
+php artisan test                    # PHPUnit (default Laravel scaffolding under tests/{Feature,Unit})
 
 # REQUIRED for any on-demand action (Refresh catalog, Live search, auto-crawl on bike add)
 # AND for the hourly scheduled sweeps to actually fire:
@@ -177,13 +178,39 @@ Top-level `.env` (Python crawler):
 ```
 DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/bike_parts_watcher
 DB_SCHEMA=watcher
-EBAY_ENABLED=true   EBAY_CLIENT_ID=…   EBAY_CLIENT_SECRET=…   EBAY_MARKETPLACE_ID=EBAY_US
+EBAY_ENABLED=true   EBAY_CLIENT_ID=…   EBAY_CLIENT_SECRET=…   EBAY_MARKETPLACE_IDS=EBAY_US,EBAY_GB,EBAY_DE,EBAY_AU
 WEBIKE_ENABLED=true
+YAHOO_AUCTIONS_ENABLED=true
+BUYEE_ENABLED=true
+MONOTARO_ENABLED=true
 MANUAL_SEARCH_ENABLED=true
 HTTP_TIMEOUT_SECONDS=20   HTTP_RETRIES=3   HTTP_RATE_LIMIT_PER_SECOND=3
 ```
 
 `console/.env` (Laravel) needs the same DB plus `DB_SCHEMA=console`, `WATCHER_DB_SCHEMA=watcher`, the `WATCHER_DB_*` connection vars (`USERNAME` / `PASSWORD` / `HOST` / `PORT` / `DATABASE` — each falls back to `DB_*` if unset; required by `RunPartsWatchJob`'s subprocess env override), `ADMIN_EMAIL` / `ADMIN_PASSWORD`, and `QUEUE_CONNECTION=database`.
+
+### Docker Compose runtime
+
+`docker-compose.yml` is the production runtime. It defines six long-running services plus two one-shot migrators, all sharing an external `postgresql_pgnet` network (the same network the Postgres container lives on):
+
+- `php-migrate` (one-shot) → `php artisan migrate --force`
+- `crawler-migrate` (one-shot) → `python3 -m alembic upgrade head`
+- `php` — Laravel PHP-FPM (depends on `php-migrate`)
+- `nginx` — serves `console/public/` + the named `bike_images` volume on port `8080`
+- `queue` — `php artisan queue:work --queue=sync --sleep=3 --tries=1 --timeout=1800`
+- `scheduler` — `while true; php artisan schedule:run; sleep 60; done` (no host cron needed)
+- `crawler` — `parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search,yahoo_auctions,monotaro`
+
+Bring it up with `docker compose up -d --build`. The `bike_images` named volume is mounted into both `php` (at `public/bike-images/`) and `nginx` (at `/var/www/bike-images/`, served via an alias) so user uploads survive container rebuilds. The external `postgresql_pgnet` network must exist before `docker compose up` — it's the network that the host's `postgresql` container is attached to.
+
+### CI and deploy
+
+`.github/workflows/ci.yml` runs on every push/PR to `main`:
+
+1. **`python`** — spins up Postgres 16, runs `alembic upgrade head`, then `pytest -q`.
+2. **`laravel`** — same Postgres, runs Alembic for the watcher schema, `php artisan migrate` for console, then `php artisan test`.
+3. **`docker-build`** — builds both Dockerfiles using stub `.env` files.
+4. **`deploy`** — on push to `main`, SSHes to the prod host with `appleboy/ssh-action`, `git pull`s, and **conditionally rebuilds**: if `git diff` shows changes to `Dockerfile.*`, `docker/`, `pyproject.toml`, `alembic/`, or `motorcycle_parts_watcher/`, runs `docker compose up -d --build`; otherwise just `docker compose restart php queue scheduler`. PHP-only changes therefore deploy without an image rebuild — but Python crawler changes do. Keep this in mind when estimating deploy time.
 
 ### Distributed worker deployment
 
