@@ -129,6 +129,15 @@
                                style="max-width:380px"
                                placeholder="{{ __('Instant search: title, part #, fitment…') }}"
                                value="{{ request('q') }}">
+                        @if (count($myBikeOptions) > 0)
+                        <select id="live-search-bike" class="form-select" style="max-width:220px"
+                                title="{{ __('Scope live search to a specific bike') }}">
+                            <option value="">{{ __('All my bikes') }}</option>
+                            @foreach ($myBikeOptions as $bike)
+                                <option value="{{ $bike['key'] }}">{{ $bike['label'] }}</option>
+                            @endforeach
+                        </select>
+                        @endif
                         <h5 class="card-title mb-0 ms-auto" id="parts-result-count">
                             {{ __('Showing :first–:last of :total parts', [
                                 'first' => $listings->firstItem() ?? 0,
@@ -270,6 +279,7 @@ const PARTS_I18N = @json($partsI18n);
 
 (function () {
     const qInput      = document.getElementById('parts-q');
+    const bikeSelect  = document.getElementById('live-search-bike');
     const counter     = document.getElementById('parts-result-count');
     const progressDiv = document.getElementById('live-progress');
     const progressBar = document.getElementById('live-progress-bar');
@@ -339,9 +349,11 @@ const PARTS_I18N = @json($partsI18n);
         </div>`;
     }
 
-    function showProgress(q) {
+    function showProgress(q, bikeLabel) {
         liveSearchActive = true;
-        progressLbl.textContent = PARTS_I18N.searchingFor.replace(':query', q);
+        let label = PARTS_I18N.searchingFor.replace(':query', q);
+        if (bikeLabel) label += ' — ' + bikeLabel;
+        progressLbl.textContent = label;
         progressBar.style.width = '3%';
         progressTxt.textContent = '';
         progressDiv.classList.remove('d-none');
@@ -460,22 +472,31 @@ const PARTS_I18N = @json($partsI18n);
         const q = qInput.value.trim();
         if (!q || liveSearchActive) return;
 
-        showProgress(q);
+        const bikeKey   = bikeSelect ? bikeSelect.value : '';
+        const bikeLabel = (bikeSelect && bikeKey)
+            ? bikeSelect.options[bikeSelect.selectedIndex].text
+            : '';
+
+        showProgress(q, bikeLabel);
         resultsDiv.innerHTML = renderEmpty(q);
+
+        const f = new FormData();
+        f.append('q', q);
+        if (bikeKey) f.append('bike_key', bikeKey);
 
         let r;
         try {
             r = await fetch('{{ route("parts.live-search") }}', {
                 method: 'POST',
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: (() => { const f = new FormData(); f.append('q', q); return f; })(),
+                body: f,
             });
         } catch (_) { hideProgress(); return; }
 
         if (!r.ok) { hideProgress(); return; }
         const data = await r.json();
 
-        sessionStorage.setItem('activeRun', JSON.stringify({ url: data.status_url, q }));
+        sessionStorage.setItem('activeRun', JSON.stringify({ url: data.status_url, q, bikeKey }));
         startPolling(data.status_url, q);
     }
 
@@ -488,7 +509,11 @@ const PARTS_I18N = @json($partsI18n);
             const s = await sr.json();
             if (s.status === 'running' || s.status === 'queued') {
                 qInput.value = saved.q;
-                showProgress(saved.q);
+                if (bikeSelect && saved.bikeKey) bikeSelect.value = saved.bikeKey;
+                const bikeLabel = (bikeSelect && saved.bikeKey)
+                    ? bikeSelect.options[bikeSelect.selectedIndex].text
+                    : '';
+                showProgress(saved.q, bikeLabel);
                 runSearch(saved.q);   // show any partial results already in the DB
                 startPolling(saved.url, saved.q);
             } else {

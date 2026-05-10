@@ -85,6 +85,15 @@ class PartsController extends Controller
                                   ->map(fn ($c) => $c->displayLabel())->all(),
         ];
 
+        // Always the user's own bikes — used to populate the live-search bike selector.
+        $myBikeOptions = BikeCatalog::query()
+            ->whereIn('id', $myCatalogIds)
+            ->orderBy('make')->orderBy('model')->orderBy('year_start')
+            ->get()
+            ->map(fn ($c) => ['key' => $c->catalog_key, 'label' => $c->displayLabel()])
+            ->values()
+            ->all();
+
         // Active high-priority watch queries — used to flag matching listings with a ★ badge.
         $watchQueries = $user->partsWatches()
             ->where('is_high_priority', true)
@@ -94,7 +103,7 @@ class PartsController extends Controller
             ->values()
             ->all();
 
-        return view('parts.index', compact('listings', 'facets', 'scope', 'watchQueries', 'bikeLabels'));
+        return view('parts.index', compact('listings', 'facets', 'scope', 'watchQueries', 'bikeLabels', 'myBikeOptions'));
     }
 
     public function show(Listing $listing)
@@ -164,13 +173,28 @@ class PartsController extends Controller
     public function liveSearch(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'q' => ['required', 'string', 'min:2', 'max:200'],
+            'q'        => ['required', 'string', 'min:2', 'max:200'],
+            'bike_key' => ['nullable', 'string', 'max:200'],
         ]);
 
         $user = $request->user();
-        $myCatalogs = BikeCatalog::query()
-            ->whereIn('id', $user->selectedCatalogBikeIds())
-            ->get();
+        $myCatalogIds = $user->selectedCatalogBikeIds();
+        $bikeKey = $data['bike_key'] ?? null;
+
+        if ($bikeKey) {
+            $myCatalogs = BikeCatalog::query()
+                ->whereIn('id', $myCatalogIds)
+                ->where('catalog_key', $bikeKey)
+                ->get();
+            // Silently fall back to all bikes if the requested key isn't in the user's list.
+            if ($myCatalogs->isEmpty()) {
+                $myCatalogs = BikeCatalog::query()->whereIn('id', $myCatalogIds)->get();
+            }
+        } else {
+            $myCatalogs = BikeCatalog::query()
+                ->whereIn('id', $myCatalogIds)
+                ->get();
+        }
 
         $watchIds = DB::transaction(function () use ($user, $myCatalogs, $data) {
             $ids = [];
