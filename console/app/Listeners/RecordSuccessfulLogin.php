@@ -9,13 +9,7 @@ class RecordSuccessfulLogin
 {
     public function handle(Login $event): void
     {
-        LoginHistory::create([
-            'user_id'    => $event->user->getKey(),
-            'email'      => $event->user->email,
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-            'success'    => true,
-            'login_at'   => now(),
-        ]);
+        $record = LoginHistory::record($event->user->getKey(), null, true);
+        session(['login_history_id' => $record->id]);
     }
 }

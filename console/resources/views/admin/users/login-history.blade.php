@@ -41,14 +41,14 @@
                                 @endif
                             </td>
                             <td class="text-nowrap">{{ $h->ip_address ?? '—' }}</td>
-                            <td class="text-muted small" style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                            <td class="text-muted small text-truncate" style="max-width:320px;"
                                 title="{{ $h->user_agent }}">
                                 {{ $h->user_agent ?? '—' }}
                             </td>
                             <td class="text-nowrap">
                                 {{ $h->logout_at ? $h->logout_at->format('H:i:s') : '—' }}
                             </td>
-                            <td class="text-nowrap">{{ $h->duration() ?? '—' }}</td>
+                            <td class="text-nowrap">{{ $h->duration ?? '—' }}</td>
                         </tr>
                     @empty
                         <tr>

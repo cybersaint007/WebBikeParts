@@ -9,13 +9,10 @@ class RecordFailedLogin
 {
     public function handle(Failed $event): void
     {
-        LoginHistory::create([
-            'user_id'    => $event->user?->getKey(),
-            'email'      => $event->credentials['email'] ?? null,
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-            'success'    => false,
-            'login_at'   => now(),
-        ]);
+        LoginHistory::record(
+            $event->user?->getKey(),
+            $event->credentials['email'] ?? null,
+            false,
+        );
     }
 }

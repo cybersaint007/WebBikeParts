@@ -9,12 +9,10 @@ class RecordLogout
 {
     public function handle(Logout $event): void
     {
-        LoginHistory::query()
-            ->where('user_id', $event->user->getKey())
-            ->where('success', true)
-            ->whereNull('logout_at')
-            ->latest('login_at')
-            ->limit(1)
-            ->update(['logout_at' => now()]);
+        $id = session('login_history_id');
+        if ($id) {
+            LoginHistory::where('id', $id)->whereNull('logout_at')->update(['logout_at' => now()]);
+            session()->forget('login_history_id');
+        }
     }
 }
