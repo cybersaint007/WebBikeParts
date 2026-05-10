@@ -140,6 +140,20 @@
                 </div>
 
                 <div class="card-body" id="parts-grid-container">
+                    {{-- Live search progress banner; shown/hidden by JS --}}
+                    <div id="live-progress" class="d-none border-bottom pb-3 mb-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="spinner-border spinner-border-sm text-primary flex-shrink-0"></span>
+                            <strong id="live-progress-label"></strong>
+                        </div>
+                        <div class="progress mb-1" style="height:5px;">
+                            <div id="live-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width:3%"></div>
+                        </div>
+                        <p class="text-muted fs-13 mb-0" id="live-progress-text"></p>
+                    </div>
+
+                    {{-- Results area; replaced wholesale by runSearch() --}}
+                    <div id="parts-results">
                     @if ($listings->isEmpty())
                         <div class="text-center py-5" id="parts-empty-state">
                             <h5 class="text-muted">{{ __('No cached matches.') }}</h5>
@@ -228,6 +242,7 @@
                             {{ $listings->links() }}
                         </div>
                     @endif
+                    </div>{{-- #parts-results --}}
                 </div>
             </div>
         </div>
@@ -241,7 +256,8 @@
         'noMatchesFor'    => __('No cached matches for ":query".'),
         'liveSearchBlurb' => __("Run a live search across eBay / Webike now and we'll save it to your watch list."),
         'searchLive'      => __('Search live sources'),
-        'searchingLive'   => __('Searching live sources…'),
+        'searchingFor'    => __('Searching live sources for ":query"…'),
+        'jobsDone'        => __(':done of :total done — results loading…'),
         'liveFailed'      => __('Live search failed'),
         'lastSeen'        => __('Last seen :time'),
         'viewOn'          => __('View on :source'),
@@ -253,14 +269,19 @@
 const PARTS_I18N = @json($partsI18n);
 
 (function () {
-    const qInput  = document.getElementById('parts-q');
-    const grid    = document.getElementById('parts-grid');
-    const grid_c  = document.getElementById('parts-grid-container');
-    const counter = document.getElementById('parts-result-count');
-    const liveBtn = document.getElementById('live-search-btn');
-    const allBikes = new URLSearchParams(window.location.search).get('all_bikes') === '1';
+    const qInput      = document.getElementById('parts-q');
+    const counter     = document.getElementById('parts-result-count');
+    const progressDiv = document.getElementById('live-progress');
+    const progressBar = document.getElementById('live-progress-bar');
+    const progressLbl = document.getElementById('live-progress-label');
+    const progressTxt = document.getElementById('live-progress-text');
+    const resultsDiv  = document.getElementById('parts-results');
 
     if (!qInput) return;
+
+    let liveSearchActive = false;
+    let statusTimer = null;
+    let resultsTimer = null;
 
     function escapeHtml(s) {
         return (s || '').replace(/[&<>"']/g, c =>
@@ -301,14 +322,47 @@ const PARTS_I18N = @json($partsI18n);
 
     function renderEmpty(q) {
         const headline = PARTS_I18N.noMatchesFor.replace(':query', q);
+        // While a live search is active, suppress the button — show a small note instead.
+        const action = liveSearchActive
+            ? `<p class="text-muted fs-13 mt-2">
+                   <span class="spinner-border spinner-border-sm me-1"></span>
+                   ${escapeHtml(PARTS_I18N.searchingFor.replace(':query', q))}
+               </p>`
+            : `<button type="button" class="btn btn-primary" id="live-search-btn">
+                   <i class="ri-search-eye-line me-1"></i> ${escapeHtml(PARTS_I18N.searchLive)}
+               </button>`;
         return `
         <div class="text-center py-5" id="parts-empty-state">
             <h5 class="text-muted">${escapeHtml(headline)}</h5>
             <p class="text-muted">${escapeHtml(PARTS_I18N.liveSearchBlurb)}</p>
-            <button type="button" class="btn btn-primary" id="live-search-btn">
-                <i class="ri-search-eye-line me-1"></i> ${escapeHtml(PARTS_I18N.searchLive)}
-            </button>
+            ${action}
         </div>`;
+    }
+
+    function showProgress(q) {
+        liveSearchActive = true;
+        progressLbl.textContent = PARTS_I18N.searchingFor.replace(':query', q);
+        progressBar.style.width = '3%';
+        progressTxt.textContent = '';
+        progressDiv.classList.remove('d-none');
+    }
+
+    // s = the JSON object from the status endpoint (may include jobs_done / jobs_total).
+    function updateProgress(s) {
+        const done  = s.jobs_done;
+        const total = s.jobs_total;
+        if (!total) return;
+        const pct = Math.max(3, Math.round((done / total) * 100));
+        progressBar.style.width = pct + '%';
+        progressTxt.textContent = PARTS_I18N.jobsDone
+            .replace(':done', done)
+            .replace(':total', total);
+    }
+
+    function hideProgress() {
+        liveSearchActive = false;
+        progressDiv.classList.add('d-none');
+        progressBar.style.width = '0%';
     }
 
     let currentReq = null;
@@ -316,8 +370,7 @@ const PARTS_I18N = @json($partsI18n);
     async function runSearch(q) {
         const params = new URLSearchParams(window.location.search);
         if (q) params.set('q', q); else params.delete('q');
-        params.delete('page'); // reset paging
-        // Update the URL so bookmarks work
+        params.delete('page');
         const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
         window.history.replaceState({}, '', newUrl);
 
@@ -339,10 +392,10 @@ const PARTS_I18N = @json($partsI18n);
                     .replace(':total', data.total);
 
             if (data.total === 0) {
-                grid_c.innerHTML = renderEmpty(q);
-                attachLiveBtn();
+                resultsDiv.innerHTML = renderEmpty(q);
+                if (!liveSearchActive) attachLiveBtn();
             } else {
-                grid_c.innerHTML = '<div class="row">' + data.data.map(renderCard).join('') + '</div>';
+                resultsDiv.innerHTML = '<div class="row">' + data.data.map(renderCard).join('') + '</div>';
             }
         } catch (e) {
             if (e.name !== 'AbortError') console.warn(e);
@@ -367,48 +420,87 @@ const PARTS_I18N = @json($partsI18n);
         if (btn) btn.disabled = !qInput.value.trim();
     });
 
+    function stopPolling() {
+        clearInterval(statusTimer);
+        clearInterval(resultsTimer);
+        statusTimer = null;
+        resultsTimer = null;
+    }
+
+    async function onSearchFinished(success, q) {
+        stopPolling();
+        sessionStorage.removeItem('activeRun');
+        hideProgress();
+        await runSearch(q);
+        attachLiveBtn();
+        if (!success) {
+            const btn = document.getElementById('live-search-btn');
+            if (btn) btn.textContent = PARTS_I18N.liveFailed;
+        }
+    }
+
+    function startPolling(statusUrl, q) {
+        stopPolling();
+        // Poll status every 3 s → update the progress bar.
+        statusTimer = setInterval(async () => {
+            try {
+                const sr = await fetch(statusUrl, { headers: { 'Accept': 'application/json' } });
+                const s = await sr.json();
+                updateProgress(s);
+                if (s.status === 'success' || s.status === 'failed') {
+                    onSearchFinished(s.status === 'success', q);
+                }
+            } catch (_) {}
+        }, 3000);
+        // Refresh the results grid every 7 s so cards appear progressively.
+        resultsTimer = setInterval(() => runSearch(q), 7000);
+    }
+
     async function launchLiveSearch() {
         const q = qInput.value.trim();
-        if (!q) return;
-        const btn = document.getElementById('live-search-btn');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> ' + escapeHtml(PARTS_I18N.searchingLive);
+        if (!q || liveSearchActive) return;
 
-        const formData = new FormData();
-        formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}');
-        formData.append('q', q);
-        const r = await fetch('{{ route("parts.live-search") }}', {
-            method: 'POST',
-            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: formData,
-        });
-        if (!r.ok) {
-            btn.innerHTML = escapeHtml(PARTS_I18N.liveFailed);
-            return;
-        }
+        showProgress(q);
+        resultsDiv.innerHTML = renderEmpty(q);
+
+        let r;
+        try {
+            r = await fetch('{{ route("parts.live-search") }}', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: (() => { const f = new FormData(); f.append('q', q); return f; })(),
+            });
+        } catch (_) { hideProgress(); return; }
+
+        if (!r.ok) { hideProgress(); return; }
         const data = await r.json();
 
-        // Poll the run until success/failed
-        const tick = async () => {
-            try {
-                const sr = await fetch(data.status_url, { headers: { 'Accept': 'application/json' } });
-                const s = await sr.json();
-                if (s.status === 'success' || s.status === 'failed') {
-                    runSearch(qInput.value.trim());
-                    btn.innerHTML = '<i class="ri-search-eye-line me-1"></i> ' + escapeHtml(PARTS_I18N.searchLive);
-                    btn.disabled = !qInput.value.trim();
-                } else {
-                    setTimeout(tick, 3000);
-                }
-            } catch (e) { setTimeout(tick, 5000); }
-        };
-        setTimeout(tick, 3000);
+        sessionStorage.setItem('activeRun', JSON.stringify({ url: data.status_url, q }));
+        startPolling(data.status_url, q);
     }
+
+    // On page load: reconnect to any in-progress search from this browser session.
+    (async () => {
+        const saved = JSON.parse(sessionStorage.getItem('activeRun') || 'null');
+        if (!saved) return;
+        try {
+            const sr = await fetch(saved.url, { headers: { 'Accept': 'application/json' } });
+            const s = await sr.json();
+            if (s.status === 'running' || s.status === 'queued') {
+                qInput.value = saved.q;
+                showProgress(saved.q);
+                runSearch(saved.q);   // show any partial results already in the DB
+                startPolling(saved.url, saved.q);
+            } else {
+                sessionStorage.removeItem('activeRun');
+                if (saved.q) { qInput.value = saved.q; runSearch(saved.q); }
+            }
+        } catch (_) { sessionStorage.removeItem('activeRun'); }
+    })();
 
     attachLiveBtn();
 
-    // Keep the Subcategory dropdown in sync with the selected Category.
-    // Subcategory slugs are `<category>-<sub>`, so we filter by data-parent.
+    // Keep Subcategory dropdown in sync with Category (slugs are `<cat>-<sub>`).
     const catSelect = document.getElementById('parts-filter-category');
     const subSelect = document.getElementById('parts-filter-subcategory');
     if (catSelect && subSelect) {
