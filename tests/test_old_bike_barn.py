@@ -169,6 +169,65 @@ def test_handles_for_bike_empty_when_unknown():
     assert idx.handles_for_bike(bike) == []
 
 
+def test_handles_for_bike_uses_alias_for_gsx1100s_katana():
+    """webike's `GSX1100S KATANA` should resolve to OBB's `GSX1100 Katana 1100` collection."""
+    idx = _build_index(
+        [
+            (
+                "suzuki-katana-1100-oem-aftermarket-parts",
+                "Suzuki GSX1100 Katana 1100 Parts (1981–2006) – OEM & Aftermarket Motorcycle Parts",
+            ),
+        ]
+    )
+    bike = BikeRef(
+        catalog_key="suzuki-katana-1100-1990",
+        make="SUZUKI",
+        model="GSX1100S KATANA",
+        year_start=1990, year_end=1990,
+    )
+    assert idx.handles_for_bike(bike) == ["suzuki-katana-1100-oem-aftermarket-parts"]
+
+
+def test_handles_for_bike_uses_alias_for_gsx1300r_hayabusa():
+    idx = _build_index(
+        [
+            (
+                "suzuki-gsx1300-hayabusa-parts",
+                "Suzuki GSX1300 Parts (1999–2026) – OEM, Aftermarket & Replacement Motorcycle Parts",
+            ),
+        ]
+    )
+    bike = BikeRef(
+        catalog_key="suzuki-hayabusa-2003",
+        make="Suzuki",
+        model="GSX1300R HAYABUSA",
+        year_start=2003, year_end=2003,
+    )
+    assert idx.handles_for_bike(bike) == ["suzuki-gsx1300-hayabusa-parts"]
+
+
+def test_handles_for_bike_alias_loses_to_exact_match():
+    """If both a direct token and an alias would resolve, the direct match wins."""
+    idx = _build_index(
+        [
+            (
+                "suzuki-gsx1100s-direct-collection",
+                "Suzuki GSX1100S Parts (1985–1990)",
+            ),
+            (
+                "suzuki-katana-1100-oem-aftermarket-parts",
+                "Suzuki GSX1100 Katana 1100 Parts (1981–2006)",
+            ),
+        ]
+    )
+    bike = BikeRef(
+        catalog_key="x", make="Suzuki", model="GSX1100S KATANA",
+        year_start=1990, year_end=1990,
+    )
+    # Direct hit on "GSX1100S" should win — the alias path never runs.
+    assert idx.handles_for_bike(bike) == ["suzuki-gsx1100s-direct-collection"]
+
+
 def test_handles_for_bike_returns_both_handles_for_amp_join_collection():
     """A "CB350 & CL350" collection should be findable by either model."""
     idx = _build_index(

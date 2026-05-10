@@ -68,6 +68,20 @@ _TRAILING_YEAR_RE = re.compile(r"\s*\(\s*\d{4}(?:\s*[-–]\s*\d{4})?\s*\)\s*$")
 
 CACHE_TTL_SECONDS = 24 * 60 * 60
 
+# Webike → OBB head-token aliases. Webike's catalog tends to use sport-variant
+# suffixes ("GSX1100S KATANA" for the Katana 1100, "GSX1300R HAYABUSA" for the
+# Hayabusa), while OBB names its collections by the base displacement family
+# ("GSX1100 Katana 1100", "GSX1300 Hayabusa"). Each entry maps a
+# `(make_lower, head_token_lower)` we expect to see on `BikeRef` to the OBB
+# head token (the first whitespace-delimited word of the parsed model in the
+# collection title). Aliases are tried *after* the direct head-token lookup, so
+# an exact match always wins; only when the direct lookup misses do we consult
+# this table. Add new entries here as the catalog turns up name variants.
+_HEAD_TOKEN_ALIASES: dict[tuple[str, str], str] = {
+    ("suzuki", "gsx1100s"): "gsx1100",   # GSX1100S KATANA → GSX1100 Katana 1100
+    ("suzuki", "gsx1300r"): "gsx1300",   # GSX1300R HAYABUSA → GSX1300 Hayabusa
+}
+
 
 # ---------------------------------------------------------------------------
 # Adapter
@@ -255,9 +269,20 @@ class _CollectionIndex:
             handles = self._by_key.get((make, whole))
             if handles:
                 return handles
-        # Fall back to first model token (e.g. "GSX1100S" from "GSX1100S KATANA").
-        for tok in (bike.model or "").split():
-            handles = self._by_key.get((make, tok.lower()))
+        tokens = [t.lower() for t in (bike.model or "").split() if t]
+        # Direct head-token lookup ("GSX1100S" from "GSX1100S KATANA").
+        for tok in tokens:
+            handles = self._by_key.get((make, tok))
+            if handles:
+                return handles
+        # Last resort: aliased head-token lookup. Catches cases where the
+        # webike catalog's model token doesn't match any OBB title token but a
+        # known synonym does (e.g. GSX1100S → GSX1100 Katana 1100).
+        for tok in tokens:
+            aliased = _HEAD_TOKEN_ALIASES.get((make, tok))
+            if not aliased:
+                continue
+            handles = self._by_key.get((make, aliased))
             if handles:
                 return handles
         return []
