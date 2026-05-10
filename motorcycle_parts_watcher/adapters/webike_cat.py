@@ -65,7 +65,7 @@ class WebikeCatAdapter:
 
         # Use base model URL (strip kt/ year variant) for broadest category discovery
         parts_url = bike.webike_url.replace("/md/", "/parts/md/", 1)
-        model_base = re.sub(r"/kt/\d+.*", "", parts_url)
+        model_base = re.sub(r"/kt/\d+.*", "", parts_url).rstrip("/")
 
         headers = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"}
         results: list[NormalizedListing] = []
