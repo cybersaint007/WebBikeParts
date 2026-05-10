@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Two sub-projects sharing one PostgreSQL database (`bike_parts_watcher`):
 
-- **`motorcycle_parts_watcher/`** — Python 3.12+ async crawler. Pulls aftermarket / OEM / used parts listings from eBay, Webike (TW), Yahoo Auctions (JP), Buyee, Monotaro, plus a manual-search fallback, into the `watcher` schema. Several JP sources (`webike_jp`, `croooober`, `mercari`, `rakuten`, `goobike`) are stubs blocked on geo / SPA / API-key issues — see `ADAPTERS.md`. Typer CLI entrypoint: `parts-watch`.
+- **`motorcycle_parts_watcher/`** — Python 3.12+ async crawler. Pulls aftermarket / OEM / used parts listings from eBay, Webike TW (per-bike `/md/` scrape + Playwright `/search` keyword scrape), Yahoo Auctions (JP), Buyee, Monotaro, plus a manual-search fallback, into the `watcher` schema. Several JP sources (`webike_jp`, `croooober`, `mercari`, `rakuten`, `goobike`) are stubs blocked on geo / SPA / API-key issues — see `ADAPTERS.md`. Typer CLI entrypoint: `parts-watch`.
 - **`console/`** — Laravel 12 / PHP 8.2 web UI (Velzon admin template, Vite, Bootstrap 5). Owns the `console` schema, reads from `watcher` via a second DB connection, and **shells out to `parts-watch`** via queued jobs for on-demand crawls and catalog sync.
 
 The two pieces are not independent — the console drives crawl scope (users pick bikes; only those get crawled) and triggers ad-hoc work.
@@ -76,8 +76,9 @@ The producer and worker are decoupled by the queue so workers can run on geo-dis
 - **`services/crawl.py`** — split into:
   - `CrawlProducer` — `enqueue_for_bike` / `enqueue_all` / `enqueue_watches`. Translates the query *per adapter* via `utils/i18n.py` at enqueue time, so the worker is dumb about translation. The producer is the only side that imports the translation dictionary.
   - `CrawlWorker` — `run_once` / `run_forever`. Claims one job filtered by `--adapters` allowlist, runs the adapter, ingests results via `IngestService`, marks the job complete/failed. Periodically calls `release_stale` so a crashed worker's locked rows return to `pending`.
-- **`services/catalog_sync.py`** — webike.tw scraper that populates `watcher.bike_catalog` and `watcher.categories`. Three-pass: (1) scrape the home page for `/mf/{MAKE}/` links to get the full maker list (14 as of 2026-05; `DEFAULT_MAKES` is the offline fallback); (2) walk `/mf/{MAKE}/{cc}` index pages to upsert one umbrella row per model with `year_start=year_end=0`; (3) for each umbrella, fetch its `/md/{id}` detail page and upsert one row per `年式 : YYYY ~ YYYY` year-range variant (open-ended `~ ` end-years default to the current year), also extracting the first CDN image URL into `image_url`. `BikeCatalog::yearsForModel` returns the umbrella's `0` only when no real variants exist. The maker list used to be hardcoded via `WEBIKE_CATALOG_MAKES`; that env var is no longer read (commit `3b5bafb`). `image_url` is only written when the detail page yields an image — existing non-null values are not cleared if the page yields nothing.
+- **`services/catalog_sync.py`** — webike.tw scraper that populates `watcher.bike_catalog` and `watcher.categories`. Three-pass: (1) scrape the home page for `/mf/{MAKE}/` links to get the full maker list (14 as of 2026-05; `DEFAULT_MAKES` is the offline fallback) and union with `WEBIKE_CATALOG_EXTRA_MAKES` (comma/whitespace-separated, uppercased) to cover brands the homepage doesn't link (e.g. KTM, MV Agusta, Husqvarna); (2) walk `/mf/{MAKE}/{cc}` index pages to upsert one umbrella row per model with `year_start=year_end=0`; (3) for each umbrella, fetch its `/md/{id}` detail page and upsert one row per `年式 : YYYY ~ YYYY` year-range variant (open-ended `~ ` end-years default to the current year), also extracting the first CDN image URL into `image_url`. `BikeCatalog::yearsForModel` returns the umbrella's `0` only when no real variants exist. The maker list used to be hardcoded via `WEBIKE_CATALOG_MAKES`; that env var is no longer read (commit `3b5bafb`). `image_url` is only written when the detail page yields an image — existing non-null values are not cleared if the page yields nothing.
 - **`utils/http.py`** — shared async client factory + `AsyncRateLimiter` + `with_retries`. Adapters must use this, not raw `httpx`.
+- **`adapters/webike_search.py`** — Playwright/headless-Chromium driver for `webike.tw/search?q=…`. Returns the full keyword catalog (paginates up to `MAX_PAGES = 5`), not just the ~20-30 products on a single `/md/{ID}` model page. Uses `source_name = "webike_search"` (distinct from `webike`), so a product appearing in both scrapes generates two rows; the `url` UNIQUE constraint on `watcher.listings` prevents physical duplicates. **Cloudflare-blocked from data-center / VPS IPs** — without `WEBIKE_PROXY_URL` set to a residential proxy (`socks5://user:pass@host:port` or `http://…`) the adapter logs a one-line WARNING and returns `[]`. Requires Playwright + Chromium; the Chromium binary is preinstalled in `Dockerfile.crawler` via `playwright install chromium --with-deps`.
 
 ### Queue conventions
 
@@ -180,6 +181,8 @@ DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/bike_parts_watcher
 DB_SCHEMA=watcher
 EBAY_ENABLED=true   EBAY_CLIENT_ID=…   EBAY_CLIENT_SECRET=…   EBAY_MARKETPLACE_IDS=EBAY_US,EBAY_GB,EBAY_DE,EBAY_AU
 WEBIKE_ENABLED=true
+WEBIKE_SEARCH_ENABLED=false   # Playwright keyword scrape; needs WEBIKE_PROXY_URL from VPS/cloud
+WEBIKE_PROXY_URL=             # residential proxy for Cloudflare bypass (socks5://user:pass@host:port)
 YAHOO_AUCTIONS_ENABLED=true
 BUYEE_ENABLED=true
 MONOTARO_ENABLED=true
@@ -202,6 +205,10 @@ HTTP_TIMEOUT_SECONDS=20   HTTP_RETRIES=3   HTTP_RATE_LIMIT_PER_SECOND=3
 - `crawler` — `parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search,yahoo_auctions,monotaro`
 
 Bring it up with `docker compose up -d --build`. The `bike_images` named volume is mounted into both `php` (at `public/bike-images/`) and `nginx` (at `/var/www/bike-images/`, served via an alias) so user uploads survive container rebuilds. The external `postgresql_pgnet` network must exist before `docker compose up` — it's the network that the host's `postgresql` container is attached to.
+
+**Note — `webike_search` is not in the compose worker's allowlist.** The `crawler` service runs `--adapters ebay,buyee,webike,manual_search,yahoo_auctions,monotaro`, so even with `WEBIKE_SEARCH_ENABLED=true` the producer enqueues `webike_search` jobs that no worker claims. To enable: extend the allowlist in `docker-compose.yml`, or run a dedicated worker (typically on a host with a residential proxy / non-data-center IP).
+
+**`Dockerfile.console` bundles `parts-watch` (commit 3b10398).** The PHP image installs the crawler into a venv at `/opt/parts-watch/` and exports `WATCHER_PARTS_WATCH_BIN=/opt/parts-watch/bin/parts-watch`, so the `queue` and `scheduler` containers can shell out via `RunPartsWatchJob`. Operational consequence: a change to the Python crawler (`pyproject.toml`, `motorcycle_parts_watcher/`) now also invalidates the PHP image — the conditional rebuild in CI/deploy already covers this, but PHP-only thinking can mislead estimates.
 
 ### CI and deploy
 
