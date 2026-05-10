@@ -44,6 +44,9 @@ abstract class RunPartsWatchJob implements ShouldQueue
         // Override Laravel-inherited DB_* env vars so the Python subprocess connects
         // with the WATCHER_DB_* values (separate connection, watcher schema), not Laravel's
         // pgsql / console-schema config.
+        // Also forward adapter-enabled flags: console/.env doesn't carry these, so without
+        // explicit forwarding the Python Settings class falls back to default=False for most
+        // adapters and only ebay + manual_search (default=True) get enqueued.
         $env = [
             'DATABASE_URL' => sprintf(
                 'postgresql+psycopg://%s%s@%s:%s/%s',
@@ -53,7 +56,25 @@ abstract class RunPartsWatchJob implements ShouldQueue
                 env('WATCHER_DB_PORT', env('DB_PORT', '5432')),
                 env('WATCHER_DB_DATABASE', env('DB_DATABASE')),
             ),
-            'DB_SCHEMA' => env('WATCHER_DB_SCHEMA', 'watcher'),
+            'DB_SCHEMA'              => env('WATCHER_DB_SCHEMA', 'watcher'),
+            'EBAY_ENABLED'           => env('EBAY_ENABLED', 'true'),
+            'EBAY_CLIENT_ID'         => env('EBAY_CLIENT_ID', ''),
+            'EBAY_CLIENT_SECRET'     => env('EBAY_CLIENT_SECRET', ''),
+            'EBAY_MARKETPLACE_IDS'   => env('EBAY_MARKETPLACE_IDS', 'EBAY_US'),
+            'BUYEE_ENABLED'          => env('BUYEE_ENABLED', 'true'),
+            'WEBIKE_ENABLED'         => env('WEBIKE_ENABLED', 'true'),
+            'WEBIKE_SEARCH_ENABLED'  => env('WEBIKE_SEARCH_ENABLED', 'false'),
+            'WEBIKE_PROXY_URL'       => env('WEBIKE_PROXY_URL', ''),
+            'WEBIKE_JP_ENABLED'      => env('WEBIKE_JP_ENABLED', 'false'),
+            'YAHOO_AUCTIONS_ENABLED' => env('YAHOO_AUCTIONS_ENABLED', 'true'),
+            'MONOTARO_ENABLED'       => env('MONOTARO_ENABLED', 'true'),
+            'OLD_BIKE_BARN_ENABLED'  => env('OLD_BIKE_BARN_ENABLED', 'true'),
+            'MERCARI_ENABLED'        => env('MERCARI_ENABLED', 'true'),
+            'GOOBIKE_ENABLED'        => env('GOOBIKE_ENABLED', 'true'),
+            'CROOOOBER_ENABLED'      => env('CROOOOBER_ENABLED', 'false'),
+            'RAKUTEN_ENABLED'        => env('RAKUTEN_ENABLED', 'false'),
+            'RAKUTEN_APP_ID'         => env('RAKUTEN_APP_ID', ''),
+            'MANUAL_SEARCH_ENABLED'  => env('MANUAL_SEARCH_ENABLED', 'true'),
         ];
 
         $argv = array_merge([$bin], $this->arguments());
