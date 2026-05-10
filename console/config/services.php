@@ -30,4 +30,8 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'ebay' => [
+        'verification_token' => env('EBAY_VERIFICATION_TOKEN'),
+    ],
+
 ];
