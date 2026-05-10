@@ -18,14 +18,17 @@ logger = logging.getLogger(__name__)
 
 WEBIKE_BASE = "https://www.webike.tw"
 USER_AGENT = "Mozilla/5.0 (compatible; motorcycle-parts-watcher/0.1)"
+MAX_PAGES = 100  # webike model pages can reach 60+ pages for popular bikes
 
 
 class WebikeAdapter:
     """Pulls product listings for a bike by scraping its /md/{MODEL_ID} page on webike.tw.
 
     Webike's keyword search (/search?q=...) is JS-rendered, but the per-bike model page is
-    plain HTML with ~150 product anchors at /sd/{PRODUCT_ID}. We use the catalog row's
-    `webike_url` (populated by services/catalog_sync.py) as the entry point.
+    plain HTML with ~40 product cards per page. We use the catalog row's `webike_url`
+    (populated by services/catalog_sync.py) as the entry point and paginate until the
+    last page, so niche parts buried deep in the listing (e.g. brand-filtered sub-categories
+    that appear only on later pages) are not missed.
     """
 
     name = "webike"
@@ -41,40 +44,55 @@ class WebikeAdapter:
             logger.info("webike: bike %s has no webike_url; skipping", bike.catalog_key)
             return []
 
+        results: list[NormalizedListing] = []
+        seen_ids: set[str] = set()
+        headers = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"}
+
+        # The catalog stores /md/{id} URLs; /parts/md/{id} is the full paginated catalog.
+        parts_url = bike.webike_url.replace("/md/", "/parts/md/", 1)
+
         try:
-            html = await self._fetch_html(bike.webike_url)
+            async with build_async_client(self.settings) as client:
+                await self._limiter.wait()
+                response = await with_retries(
+                    lambda: client.get(parts_url, headers=headers),
+                    retries=self.settings.http_retries,
+                    backoff_seconds=self.settings.http_retry_backoff_seconds,
+                )
+                final_url = str(response.url)
+                if WEBIKE_BASE not in final_url:
+                    raise RuntimeError(
+                        f"webike.tw redirected to {final_url!r} — IP may be geo-blocked; "
+                        "set WEBIKE_PROXY_URL to a residential proxy to bypass"
+                    )
+                response.raise_for_status()
+                base_url = final_url.split("?")[0]
+
+                for page_num in range(1, MAX_PAGES + 1):
+                    page_results = self._parse_page(response.text, bike, seen_ids)
+                    results.extend(page_results)
+                    if not page_results or not self._has_next_page(response.text, page_num):
+                        break
+                    await self._limiter.wait()
+                    next_url = f"{base_url}?page={page_num + 1}"
+                    response = await with_retries(
+                        lambda: client.get(next_url, headers=headers),
+                        retries=self.settings.http_retries,
+                        backoff_seconds=self.settings.http_retry_backoff_seconds,
+                    )
+                    response.raise_for_status()
+
         except Exception as exc:
             logger.warning("webike fetch failed for %s: %s", bike.catalog_key, exc)
-            return []
+            return results
 
-        results = self._parse_model_page(html, bike)
         if query:
             q_lower = query.lower()
             results = [r for r in results if q_lower in r.title.lower()]
         return results
 
-    async def _fetch_html(self, url: str) -> str:
-        headers = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"}
-        async with build_async_client(self.settings) as client:
-            await self._limiter.wait()
-            response = await with_retries(
-                lambda: client.get(url, headers=headers),
-                retries=self.settings.http_retries,
-                backoff_seconds=self.settings.http_retry_backoff_seconds,
-            )
-        final = str(response.url)
-        if WEBIKE_BASE not in final:
-            # IP is geo-blocked — webike.tw redirected away (e.g. webike-china.cn).
-            # Raise so the job is marked failed rather than silently returning 0 results.
-            raise RuntimeError(
-                f"webike.tw redirected to {final!r} — IP may be geo-blocked; "
-                "set WEBIKE_PROXY_URL to a residential proxy to bypass"
-            )
-        response.raise_for_status()
-        return response.text
-
-    def _parse_model_page(self, html: str, bike: BikeRef) -> list[NormalizedListing]:
-        """Parse webike's /md/{ID} page.
+    def _parse_page(self, html: str, bike: BikeRef, seen_ids: set[str]) -> list[NormalizedListing]:
+        """Parse one page of a webike /md/{ID} listing.
 
         Each priced product card uses schema.org microdata:
             <div class="item__body p-2">
@@ -84,12 +102,11 @@ class WebikeAdapter:
               <meta itemprop="priceCurrency" content="TWD">
             </div>
 
-        We iterate `meta[itemprop=price]` so we get only real product cards (skipping
+        We iterate meta[itemprop=price] so we get only real product cards (skipping
         the "recently viewed" / "you may also like" duplicate anchors that have no price).
         """
         soup = BeautifulSoup(html, "lxml")
         results: list[NormalizedListing] = []
-        seen_ids: set[str] = set()
 
         for price_meta in soup.select("meta[itemprop='price']"):
             container = self._find_product_container(price_meta)
@@ -108,7 +125,6 @@ class WebikeAdapter:
                 continue
 
             image_url = self._best_image(container)
-
             price_amount = parse_decimal(price_meta.get("content"))
             currency_meta = container.select_one("meta[itemprop='priceCurrency']")
             currency = currency_meta.get("content") if currency_meta else None
@@ -131,6 +147,11 @@ class WebikeAdapter:
             )
 
         return results
+
+    @staticmethod
+    def _has_next_page(html: str, current_page: int) -> bool:
+        soup = BeautifulSoup(html, "lxml")
+        return bool(soup.select_one(f"a[href*='page={current_page + 1}']"))
 
     @staticmethod
     def _find_product_container(price_meta) -> Any:
