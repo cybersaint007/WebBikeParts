@@ -1,22 +1,15 @@
-"""Webike TW — keyword search via Google CSE + category page scraping.
+"""Webike TW — keyword search via /parts?q= (server-rendered).
 
 Strategy
 --------
-1. Playwright drives webike.tw/search?q=… and waits for Google Custom Search
-   to inject .gsc-result elements into the page.
-2. Category-page URLs extracted from those CSE results are fetched with plain
-   httpx — they are server-rendered and contain the same product-card structure
-   (meta[itemprop='price'] + /sd/ anchors) as the per-bike model pages.
+GET https://www.webike.tw/parts?q=<query> and paginate. The results page is
+server-rendered (no Playwright needed) and uses the same product-card structure
+(meta[itemprop='price'] + /sd/ anchors) as the per-bike model pages.
 
-This complements WebikeAdapter (per-bike /md/ model pages) by adding
-keyword-driven category coverage.
-
-Cloudflare note
----------------
-The initial search page requires Playwright to execute Google CSE JavaScript.
-Category pages (webike.tw/parts/ca/…) are server-rendered and do not need a
-proxy from a residential IP. On data-center IPs the search step may return a
-Cloudflare challenge; set WEBIKE_PROXY_URL to a residential proxy.
+The query is the translated keyword supplied by the producer (watch sweeps) or,
+for a plain bike sweep, the first entry of BikeRef.search_terms (make + model +
+year). This finds products that mention the bike model in title/fitment even if
+they are not associated with the model page in webike's catalog.
 """
 from __future__ import annotations
 
@@ -39,18 +32,13 @@ from motorcycle_parts_watcher.utils.http import (
 logger = logging.getLogger(__name__)
 
 WEBIKE_BASE = "https://www.webike.tw"
-MAX_CATEGORY_URLS = 5
-MAX_PAGES_PER_CATEGORY = 10
-_BROWSER_ARGS = ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
+SEARCH_URL = f"{WEBIKE_BASE}/parts"
+MAX_PAGES = 50
 _UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 
 class WebikeSearchAdapter:
-    """Webike TW keyword search via Google CSE + category page scraping.
-
-    Uses Playwright to get CSE search results, then httpx to fetch product
-    listings from the category pages those results link to.
-    """
+    """Webike TW keyword search via /parts?q= (plain httpx, no Playwright)."""
 
     name = "webike_search"
     preferred_query_lang: str | None = "zh-TW"
@@ -58,100 +46,47 @@ class WebikeSearchAdapter:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.enabled = settings.webike_search_enabled
-        self._proxy_url = settings.webike_proxy_url or None
         self._limiter = AsyncRateLimiter(settings.http_rate_limit_per_second)
 
     async def fetch(self, bike: BikeRef, query: str | None = None) -> list[NormalizedListing]:
-        search_query = query or bike.search_terms[0]
-
-        category_urls = await self._get_category_urls(search_query, bike)
-        if not category_urls:
-            return []
+        # Anchor to the model name only (no make, no year) — adding the brand
+        # name or year range causes webike.tw AND-matching to drop most results.
+        # For keyword sweeps, append the translated keyword to narrow further.
+        search_query = f"{bike.model} {query}".strip() if query else bike.model
+        headers = {"User-Agent": _UA, "Accept": "text/html,application/xhtml+xml"}
 
         results: list[NormalizedListing] = []
         seen_ids: set[str] = set()
 
         async with build_async_client(self.settings) as client:
-            for cat_url in category_urls[:MAX_CATEGORY_URLS]:
-                await self._limiter.wait()
-                page_results = await self._fetch_category(client, cat_url, bike, search_query, seen_ids)
+            for page_num in range(1, MAX_PAGES + 1):
+                params = {"q": search_query}
+                if page_num > 1:
+                    params["page"] = str(page_num)
+
+                try:
+                    response = await with_retries(
+                        lambda p=params: client.get(SEARCH_URL, params=p, headers=headers),
+                        retries=self.settings.http_retries,
+                        backoff_seconds=self.settings.http_retry_backoff_seconds,
+                    )
+                    response.raise_for_status()
+                except Exception as exc:
+                    logger.warning("webike_search: fetch failed (page %d): %s", page_num, exc)
+                    break
+
+                page_results = _parse_results(response.text, bike, search_query, seen_ids)
                 results.extend(page_results)
 
-        return results
+                if not page_results or not _has_next_page(response.text, page_num):
+                    break
 
-    async def _get_category_urls(self, search_query: str, bike: BikeRef) -> list[str]:
-        """Use Playwright to load the CSE search page and extract category URLs."""
-        try:
-            from playwright.async_api import async_playwright
-        except ImportError:
-            logger.warning("webike_search: playwright not installed; run `playwright install chromium --with-deps`")
-            return []
+                await self._limiter.wait()
 
-        launch_kwargs: dict = {"headless": True, "args": _BROWSER_ARGS}
-        if self._proxy_url:
-            launch_kwargs["proxy"] = {"server": self._proxy_url}
-
-        url = f"{WEBIKE_BASE}/search?q={quote(search_query)}"
-        try:
-            async with async_playwright() as pw:
-                browser = await pw.chromium.launch(**launch_kwargs)
-                try:
-                    page = await browser.new_page(
-                        user_agent=_UA,
-                        locale="zh-TW",
-                        extra_http_headers={"Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8"},
-                    )
-                    await page.goto(url, wait_until="load", timeout=30_000)
-                    try:
-                        await page.wait_for_selector(".gsc-result", timeout=10_000)
-                    except Exception:
-                        pass
-                    html = await page.content()
-                finally:
-                    await browser.close()
-        except Exception as exc:
-            logger.warning("webike_search: search page failed for %s: %s", bike.catalog_key, exc)
-            return []
-
-        if _is_cloudflare_challenge(html):
-            proxy_hint = "" if self._proxy_url else " — set WEBIKE_PROXY_URL to a residential proxy to bypass"
-            logger.warning("webike_search: Cloudflare challenge for %s%s", bike.catalog_key, proxy_hint)
-            return []
-
-        return _extract_category_urls(html)
-
-    async def _fetch_category(
-        self,
-        client,
-        cat_url: str,
-        bike: BikeRef,
-        search_query: str,
-        seen_ids: set[str],
-    ) -> list[NormalizedListing]:
-        # Only paginate plain category pages; /sd/ product pages and brand/model
-        # filtered pages (/br/, /md/) are single-page.
-        is_category = re.search(r"/parts/ca/[\d][\d-]*$", cat_url) is not None
-        max_pages = MAX_PAGES_PER_CATEGORY if is_category else 1
-        base_url = cat_url
-
-        results: list[NormalizedListing] = []
-        for page_num in range(1, max_pages + 1):
-            url = base_url if page_num == 1 else f"{base_url}?page={page_num}"
-            try:
-                response = await with_retries(
-                    lambda u=url: client.get(u, headers={"User-Agent": _UA}),
-                    retries=self.settings.http_retries,
-                    backoff_seconds=self.settings.http_retry_backoff_seconds,
-                )
-            except Exception as exc:
-                logger.warning("webike_search: fetch failed (%s): %s", url, exc)
-                break
-            page_results = _parse_results(response.text, bike, search_query, seen_ids)
-            results.extend(page_results)
-            if not page_results or not _has_next_page(response.text, page_num):
-                break
-            await self._limiter.wait()
-
+        logger.debug(
+            "webike_search: %s query=%r → %d results",
+            bike.catalog_key, search_query, len(results),
+        )
         return results
 
 
@@ -159,33 +94,9 @@ class WebikeSearchAdapter:
 # Parsing helpers
 # ---------------------------------------------------------------------------
 
-def _is_cloudflare_challenge(html: str) -> bool:
-    return "challenges.cloudflare.com" in html or "Just a moment" in html or "請稍候" in html
-
-
-def _extract_category_urls(html: str) -> list[str]:
-    """Extract unique webike.tw category URLs from Google CSE result elements.
-
-    Model-filtered category URLs (/parts/md/{id}/ca/{code}) are canonicalized
-    to their global form (/parts/ca/{code}) so they get paginated correctly and
-    deduplicated against other results pointing at the same category.
-    """
+def _has_next_page(html: str, current_page: int) -> bool:
     soup = BeautifulSoup(html, "lxml")
-    seen: set[str] = set()
-    urls: list[str] = []
-    for result in soup.select(".gsc-result"):
-        for a in result.select("a[href]"):
-            href = a.get("href", "")
-            if "webike.tw" not in href:
-                continue
-            clean = re.sub(r"\?.*", "", href)  # strip Google tracking params
-            # Canonicalize /parts/md/{id}/ca/{code}[/...] → /parts/ca/{code}
-            clean = re.sub(r"/parts/md/\d+/ca/", "/parts/ca/", clean)
-            if clean and clean not in seen:
-                seen.add(clean)
-                urls.append(clean)
-                break  # one URL per CSE result
-    return urls
+    return bool(soup.select_one(f"a[href*='page={current_page + 1}']"))
 
 
 def _parse_results(html: str, bike: BikeRef, search_query: str, seen_ids: set[str]) -> list[NormalizedListing]:
@@ -234,7 +145,6 @@ def _parse_results(html: str, bike: BikeRef, search_query: str, seen_ids: set[st
 
 
 def _find_product_container(price_meta):
-    """Walk up from a price <meta> to the nearest ancestor that contains a /sd/ anchor."""
     node = price_meta
     for _ in range(8):
         node = node.parent
@@ -246,7 +156,6 @@ def _find_product_container(price_meta):
 
 
 def _best_image(container) -> str | None:
-    # Product image on Webike lives in a sibling outside item__body, so walk up.
     node = container
     for _ in range(4):
         if node is None:
@@ -263,7 +172,6 @@ def _best_image(container) -> str | None:
 
 
 def _best_title(container) -> str:
-    # Prefer img alt > element title attr > visible text.
     for sel in ("img", ".product-name", ".name", "[class*='title']"):
         el = container.select_one(sel)
         if el is None:
@@ -278,11 +186,6 @@ def _best_title(container) -> str:
     if title := container.get("title"):
         return title.strip()[:480]
     return container.get_text(" ", strip=True)[:480]
-
-
-def _has_next_page(html: str, current_page: int) -> bool:
-    soup = BeautifulSoup(html, "lxml")
-    return bool(soup.select_one(f"a[href*='page={current_page + 1}']"))
 
 
 def _extract_id(url: str) -> str | None:
