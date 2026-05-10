@@ -282,5 +282,19 @@
     "optional": "任意",
     "Optional notes, synonyms, or context": "備考・同義語・補足説明（任意）",
     "No results for \":query\"": "「:query」の結果が見つかりません",
-    "Could not generate a URL slug from the provided term": "入力された用語からスラッグを生成できませんでした"
+    "Could not generate a URL slug from the provided term": "入力された用語からスラッグを生成できませんでした",
+
+    "glossary.category.engine":     "エンジン",
+    "glossary.category.brakes":     "ブレーキ",
+    "glossary.category.electrical": "電装",
+    "glossary.category.suspension": "サスペンション",
+    "glossary.category.drivetrain": "駆動系",
+    "glossary.category.exhaust":    "排気",
+    "glossary.category.fuel":       "燃料",
+    "glossary.category.cooling":    "冷却",
+    "glossary.category.frame":      "フレーム",
+    "glossary.category.body":       "外装",
+    "glossary.category.wheels":     "ホイール",
+    "glossary.category.fasteners":  "ボルト類",
+    "glossary.category.general":    "その他"
 }

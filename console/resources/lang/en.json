@@ -248,5 +248,19 @@
     "optional": "optional",
     "Optional notes, synonyms, or context": "Optional notes, synonyms, or context",
     "No results for \":query\"": "No results for \":query\"",
-    "Could not generate a URL slug from the provided term": "Could not generate a URL slug from the provided term"
+    "Could not generate a URL slug from the provided term": "Could not generate a URL slug from the provided term",
+
+    "glossary.category.engine":     "Engine",
+    "glossary.category.brakes":     "Brakes",
+    "glossary.category.electrical": "Electrical",
+    "glossary.category.suspension": "Suspension",
+    "glossary.category.drivetrain": "Drivetrain",
+    "glossary.category.exhaust":    "Exhaust",
+    "glossary.category.fuel":       "Fuel",
+    "glossary.category.cooling":    "Cooling",
+    "glossary.category.frame":      "Frame",
+    "glossary.category.body":       "Body",
+    "glossary.category.wheels":     "Wheels",
+    "glossary.category.fasteners":  "Fasteners",
+    "glossary.category.general":    "General"
 }

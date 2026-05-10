@@ -282,5 +282,19 @@
     "optional": "選填",
     "Optional notes, synonyms, or context": "選填備註、同義詞或說明",
     "No results for \":query\"": "找不到「:query」的結果",
-    "Could not generate a URL slug from the provided term": "無法從輸入的詞彙生成識別碼"
+    "Could not generate a URL slug from the provided term": "無法從輸入的詞彙生成識別碼",
+
+    "glossary.category.engine":     "引擎",
+    "glossary.category.brakes":     "煞車",
+    "glossary.category.electrical": "電系",
+    "glossary.category.suspension": "懸吊",
+    "glossary.category.drivetrain": "傳動",
+    "glossary.category.exhaust":    "排氣",
+    "glossary.category.fuel":       "燃油",
+    "glossary.category.cooling":    "冷卻",
+    "glossary.category.frame":      "車架",
+    "glossary.category.body":       "外觀",
+    "glossary.category.wheels":     "輪組",
+    "glossary.category.fasteners":  "鎖件",
+    "glossary.category.general":    "一般"
 }

@@ -20,15 +20,46 @@ class GlossaryController extends Controller
 
     public function index(): View
     {
-        $grouped = PartsGlossary::orderBy('term_en')
-            ->get()
+        $columns = self::columnsForLocale(app()->getLocale());
+        $primary = $columns[0]['field'];
+
+        $grouped = PartsGlossary::get()
+            ->sortBy(fn ($e) => mb_strtolower((string) ($e->{$primary} ?: $e->term_en)))
             ->groupBy('category')
             ->sortKeys();
 
+        $modalFields = [
+            'en' => ['label' => __('English'), 'name' => 'term_en', 'placeholder' => 'e.g. fork bushing'],
+            'zh' => ['label' => '繁體中文',     'name' => 'term_zh', 'placeholder' => 'e.g. 前叉襯套'],
+            'ja' => ['label' => '日本語',       'name' => 'term_ja', 'placeholder' => 'e.g. フォークブッシュ'],
+        ];
+
         return view('glossary.index', [
-            'grouped'    => $grouped,
-            'categories' => self::CATEGORIES,
+            'grouped'       => $grouped,
+            'categories'    => self::CATEGORIES,
+            'columns'       => $columns,
+            'modalFields'   => $modalFields,
+            'columnFields'  => array_column($columns, 'field'),
         ]);
+    }
+
+    /**
+     * Three language columns ordered to put the current locale first.
+     * Each column: ['code' => 'en|zh|ja', 'field' => 'term_*', 'label' => header text].
+     *
+     * @return array<int, array{code: string, field: string, label: string}>
+     */
+    public static function columnsForLocale(string $locale): array
+    {
+        $en = ['code' => 'en', 'field' => 'term_en', 'label' => 'English'];
+        $zh = ['code' => 'zh', 'field' => 'term_zh', 'label' => '繁中'];
+        $ja = ['code' => 'ja', 'field' => 'term_ja', 'label' => '日本語'];
+
+        return match ($locale) {
+            'zh-TW' => [$zh, $en, $ja],
+            'ja'    => [$ja, $en, $zh],
+            default => [$en, $zh, $ja],
+        };
     }
 
     public function searchJson(Request $request): JsonResponse
@@ -38,8 +69,10 @@ class GlossaryController extends Controller
             return response()->json([]);
         }
 
+        $primary = self::columnsForLocale(app()->getLocale())[0]['field'];
+
         $results = PartsGlossary::search($q)
-            ->orderBy('term_en')
+            ->orderByRaw("LOWER(COALESCE(NULLIF({$primary}, ''), term_en))")
             ->limit(50)
             ->get(['id', 'slug', 'term_en', 'term_zh', 'term_ja', 'category', 'source']);
 

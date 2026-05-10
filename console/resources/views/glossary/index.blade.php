@@ -48,7 +48,7 @@
                                     data-bs-toggle="collapse"
                                     data-bs-target="#cat-{{ $cat }}"
                                     aria-expanded="false">
-                                {{ __($cat) }}
+                                {{ __('glossary.category.' . $cat) }}
                                 <span class="badge bg-secondary-subtle text-secondary ms-2">{{ $items->count() }}</span>
                             </button>
                         </h2>
@@ -57,35 +57,27 @@
                                 <table class="table table-sm table-hover mb-0">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>{{ __('English') }}</th>
-                                            <th>繁中</th>
-                                            <th>日本語</th>
+                                            @foreach ($columns as $col)
+                                                <th>{{ $col['code'] === 'en' ? __($col['label']) : $col['label'] }}</th>
+                                            @endforeach
                                             <th class="d-none d-md-table-cell text-muted fw-normal fs-12">{{ __('Notes') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach ($items->sortBy('term_en') as $entry)
+                                        @foreach ($items->sortBy(fn ($e) => mb_strtolower((string) ($e->{$columns[0]['field']} ?: $e->term_en))) as $entry)
                                         <tr>
-                                            <td>
-                                                {{ $entry->term_en }}
-                                                @if ($entry->source === 'user')
-                                                    <i class="ri-user-line text-muted fs-11 ms-1" title="{{ __('User contributed') }}"></i>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if ($entry->term_zh)
-                                                    {{ $entry->term_zh }}
-                                                @else
-                                                    <span class="badge bg-secondary-subtle text-secondary">—</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if ($entry->term_ja)
-                                                    {{ $entry->term_ja }}
-                                                @else
-                                                    <span class="badge bg-secondary-subtle text-secondary">—</span>
-                                                @endif
-                                            </td>
+                                            @foreach ($columns as $i => $col)
+                                                <td>
+                                                    @if ($entry->{$col['field']})
+                                                        {{ $entry->{$col['field']} }}
+                                                    @else
+                                                        <span class="badge bg-secondary-subtle text-secondary">—</span>
+                                                    @endif
+                                                    @if ($i === 0 && $entry->source === 'user')
+                                                        <i class="ri-user-line text-muted fs-11 ms-1" title="{{ __('User contributed') }}"></i>
+                                                    @endif
+                                                </td>
+                                            @endforeach
                                             <td class="d-none d-md-table-cell text-muted fs-12">{{ $entry->notes }}</td>
                                         </tr>
                                         @endforeach
@@ -103,9 +95,9 @@
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>{{ __('English') }}</th>
-                            <th>繁中</th>
-                            <th>日本語</th>
+                            @foreach ($columns as $col)
+                                <th>{{ $col['code'] === 'en' ? __($col['label']) : $col['label'] }}</th>
+                            @endforeach
                             <th>{{ __('Category') }}</th>
                         </tr>
                     </thead>
@@ -132,27 +124,21 @@
                         <p class="text-muted fs-13">
                             {{ __('Enter the part name in at least one language. Missing translations will be auto-filled by AI if configured.') }}
                         </p>
-                        <div class="mb-3">
-                            <label class="form-label">English</label>
-                            <input type="text" name="term_en" class="form-control @error('term_en') is-invalid @enderror"
-                                   value="{{ old('term_en') }}" placeholder="e.g. fork bushing">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">繁體中文</label>
-                            <input type="text" name="term_zh" class="form-control"
-                                   value="{{ old('term_zh') }}" placeholder="e.g. 前叉襯套">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">日本語</label>
-                            <input type="text" name="term_ja" class="form-control"
-                                   value="{{ old('term_ja') }}" placeholder="e.g. フォークブッシュ">
-                        </div>
+                        @foreach ($columns as $col)
+                            <div class="mb-3">
+                                <label class="form-label">{{ $modalFields[$col['code']]['label'] }}</label>
+                                <input type="text" name="{{ $modalFields[$col['code']]['name'] }}"
+                                       class="form-control @error($modalFields[$col['code']]['name']) is-invalid @enderror"
+                                       value="{{ old($modalFields[$col['code']]['name']) }}"
+                                       placeholder="{{ $modalFields[$col['code']]['placeholder'] }}">
+                            </div>
+                        @endforeach
                         <div class="mb-3">
                             <label class="form-label">{{ __('Category') }} <span class="text-danger">*</span></label>
                             <select name="category" class="form-select" required>
                                 @foreach ($categories as $cat)
                                     <option value="{{ $cat }}" {{ old('category') === $cat ? 'selected' : '' }}>
-                                        {{ ucfirst($cat) }}
+                                        {{ __('glossary.category.' . $cat) }}
                                     </option>
                                 @endforeach
                             </select>
@@ -182,10 +168,17 @@
     const resultsBody= document.getElementById('glossary-results-body');
     const noResults  = document.getElementById('glossary-no-results');
     const countEl    = document.getElementById('glossary-count');
+    const COLUMN_FIELDS = @json($columnFields);
 
     function escapeHtml(s) {
         if (!s) return '';
         return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function cell(value) {
+        return value
+            ? escapeHtml(value)
+            : '<span class="badge bg-secondary-subtle text-secondary">—</span>';
     }
 
     let timer;
@@ -217,13 +210,14 @@
 
                 noResults.classList.add('d-none');
                 countEl.textContent = items.length + ' {{ __("terms") }}';
-                resultsBody.innerHTML = items.map(t => `
-                    <tr>
-                        <td>${escapeHtml(t.term_en)}${t.source === 'user' ? ' <i class="ri-user-line text-muted fs-11"></i>' : ''}</td>
-                        <td>${t.term_zh ? escapeHtml(t.term_zh) : '<span class="badge bg-secondary-subtle text-secondary">—</span>'}</td>
-                        <td>${t.term_ja ? escapeHtml(t.term_ja) : '<span class="badge bg-secondary-subtle text-secondary">—</span>'}</td>
-                        <td><span class="badge bg-light text-dark text-capitalize">${escapeHtml(t.category)}</span></td>
-                    </tr>`).join('');
+                resultsBody.innerHTML = items.map(t => {
+                    const cells = COLUMN_FIELDS.map((field, idx) => {
+                        const userMark = (idx === 0 && t.source === 'user')
+                            ? ' <i class="ri-user-line text-muted fs-11"></i>' : '';
+                        return `<td>${cell(t[field])}${userMark}</td>`;
+                    }).join('');
+                    return `<tr>${cells}<td><span class="badge bg-light text-dark text-capitalize">${escapeHtml(t.category)}</span></td></tr>`;
+                }).join('');
             } catch (e) { /* ignore */ }
         }, 250);
     });
