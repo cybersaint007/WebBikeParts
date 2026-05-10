@@ -33,6 +33,7 @@ class Settings(BaseModel):
     http_retry_backoff_seconds: float = Field(default=1.0, alias="HTTP_RETRY_BACKOFF_SECONDS")
     http_rate_limit_per_second: float = Field(default=3.0, alias="HTTP_RATE_LIMIT_PER_SECOND")
     default_currency: str = Field(default="USD", alias="DEFAULT_CURRENCY")
+    webike_catalog_extra_makes: str = Field(default="", alias="WEBIKE_CATALOG_EXTRA_MAKES")
 
     @field_validator("database_url")
     @classmethod

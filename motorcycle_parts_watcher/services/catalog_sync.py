@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Iterable
-from urllib.parse import urljoin
+from urllib.parse import quote, urljoin
 
 import httpx
 from bs4 import BeautifulSoup
@@ -112,11 +112,14 @@ class _BikeRow:
     def catalog_key(self) -> str:
         # year_start == 0 means "year unknown" (catalog index didn't expose year info).
         # In that case we omit the year suffix; otherwise include it.
+        # Slugify the make so multi-word makes (e.g. "MV AGUSTA") yield a URL-safe key.
+        # For single-token uppercase makes (HONDA, HARLEY-DAVIDSON) this matches `.lower()`.
+        make_slug = _slugify(self.make)
         if self.year_start == 0 and self.year_end == 0:
-            return f"{self.make.lower()}-{self.model_slug}"
+            return f"{make_slug}-{self.model_slug}"
         if self.year_start == self.year_end:
-            return f"{self.make.lower()}-{self.model_slug}-{self.year_start}"
-        return f"{self.make.lower()}-{self.model_slug}-{self.year_start}-{self.year_end}"
+            return f"{make_slug}-{self.model_slug}-{self.year_start}"
+        return f"{make_slug}-{self.model_slug}-{self.year_start}-{self.year_end}"
 
 
 def _slugify(text: str) -> str:
@@ -125,20 +128,43 @@ def _slugify(text: str) -> str:
     return s.strip("-")
 
 
+def _parse_extra_makes(raw: str) -> tuple[str, ...]:
+    """Comma-separated WEBIKE_CATALOG_EXTRA_MAKES → uppercase slugs.
+
+    Split on commas only — some webike slugs contain spaces (e.g. ``MV AGUSTA``,
+    ``ROYAL ENFIELD``), so we cannot split on whitespace.
+    """
+    if not raw:
+        return ()
+    parts = (p.strip() for p in raw.split(","))
+    return tuple(p.upper() for p in parts if p)
+
+
 async def _discover_makes(settings: Settings, limiter: AsyncRateLimiter, client: httpx.AsyncClient) -> tuple[str, ...]:
-    """Scrape the webike.tw home page for the full list of `/mf/{MAKE}/` slugs."""
+    """Scrape the webike.tw home page for the full list of `/mf/{MAKE}/` slugs.
+
+    Unions the result with `WEBIKE_CATALOG_EXTRA_MAKES` from settings — webike's
+    homepage doesn't link every brand it actually hosts (e.g. KTM, MV Agusta).
+    """
+    extra = _parse_extra_makes(settings.webike_catalog_extra_makes)
     try:
         html = await _fetch_html(f"{WEBIKE_BASE}/", settings, limiter, client)
     except Exception as exc:
         print(f"[catalog-sync] make discovery fetch failed: {exc}; falling back to defaults", flush=True)
-        return DEFAULT_MAKES
+        seen: dict[str, None] = {m: None for m in DEFAULT_MAKES}
+        for m in extra:
+            seen.setdefault(m, None)
+        return tuple(seen.keys())
 
-    seen: dict[str, None] = {}  # ordered set
+    seen = {}  # ordered set
     for match in _MF_LINK_RE.finditer(html):
         seen.setdefault(match.group(1), None)
     if not seen:
         print("[catalog-sync] make discovery found no /mf/ links; falling back to defaults", flush=True)
-        return DEFAULT_MAKES
+        for m in DEFAULT_MAKES:
+            seen.setdefault(m, None)
+    for m in extra:
+        seen.setdefault(m, None)
     return tuple(seen.keys())
 
 
@@ -167,7 +193,8 @@ async def sync_catalog(session: Session, settings: Settings) -> SyncStats:
         current_year = datetime.now(UTC).year
 
         async def _process_bucket(make: str, slug: str, cc: int | None) -> None:
-            url = f"{WEBIKE_BASE}/mf/{make}/{slug}"
+            # Some webike slugs contain spaces (e.g. "MV AGUSTA") — encode them.
+            url = f"{WEBIKE_BASE}/mf/{quote(make, safe='-_')}/{slug}"
             try:
                 html = await _fetch_html(url, settings, limiter, client)
             except Exception as exc:
