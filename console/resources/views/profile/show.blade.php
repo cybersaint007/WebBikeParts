@@ -15,7 +15,7 @@
         <div class="col-lg-4">
             <div class="card">
                 <div class="card-body text-center">
-                    <img src="@if ($user->avatar) {{ URL::asset('images/' . $user->avatar) }}@else{{ URL::asset('build/images/users/avatar-1.jpg') }} @endif"
+                    <img src="@if ($user->avatar) {{ URL::asset('bike-images/avatars/' . $user->avatar) }}@else{{ URL::asset('build/images/users/avatar-1.jpg') }} @endif"
                          class="rounded-circle avatar-xl img-thumbnail mb-3" alt="">
                     <h5 class="fs-17 mb-1">{{ $user->name }}</h5>
                     <p class="text-muted mb-0">{{ $user->email }}</p>

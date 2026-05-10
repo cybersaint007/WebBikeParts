@@ -36,7 +36,7 @@ class ProfileController extends Controller
         if ($request->hasFile('avatar')) {
             $file = $request->file('avatar');
             $name = $user->id . '-' . time() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('images'), $name);
+            $file->move(public_path('bike-images/avatars'), $name);
             $user->avatar = $name;
         }
 
