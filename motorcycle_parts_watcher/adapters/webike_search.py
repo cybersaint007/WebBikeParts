@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 WEBIKE_BASE = "https://www.webike.tw"
 MAX_CATEGORY_URLS = 5
+MAX_PAGES_PER_CATEGORY = 10
 _BROWSER_ARGS = ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
 _UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
@@ -127,16 +128,31 @@ class WebikeSearchAdapter:
         search_query: str,
         seen_ids: set[str],
     ) -> list[NormalizedListing]:
-        try:
-            response = await with_retries(
-                lambda: client.get(cat_url, headers={"User-Agent": _UA}),
-                retries=self.settings.http_retries,
-                backoff_seconds=self.settings.http_retry_backoff_seconds,
-            )
-        except Exception as exc:
-            logger.warning("webike_search: category fetch failed (%s): %s", cat_url, exc)
-            return []
-        return _parse_results(response.text, bike, search_query, seen_ids)
+        # Only paginate plain category pages; /sd/ product pages and brand/model
+        # filtered pages (/br/, /md/) are single-page.
+        is_category = re.search(r"/parts/ca/[\d][\d-]*$", cat_url) is not None
+        max_pages = MAX_PAGES_PER_CATEGORY if is_category else 1
+        base_url = cat_url
+
+        results: list[NormalizedListing] = []
+        for page_num in range(1, max_pages + 1):
+            url = base_url if page_num == 1 else f"{base_url}?page={page_num}"
+            try:
+                response = await with_retries(
+                    lambda u=url: client.get(u, headers={"User-Agent": _UA}),
+                    retries=self.settings.http_retries,
+                    backoff_seconds=self.settings.http_retry_backoff_seconds,
+                )
+            except Exception as exc:
+                logger.warning("webike_search: fetch failed (%s): %s", url, exc)
+                break
+            page_results = _parse_results(response.text, bike, search_query, seen_ids)
+            results.extend(page_results)
+            if not page_results or not _has_next_page(response.text, page_num):
+                break
+            await self._limiter.wait()
+
+        return results
 
 
 # ---------------------------------------------------------------------------
@@ -255,6 +271,11 @@ def _best_title(container) -> str:
     if title := container.get("title"):
         return title.strip()[:480]
     return container.get_text(" ", strip=True)[:480]
+
+
+def _has_next_page(html: str, current_page: int) -> bool:
+    soup = BeautifulSoup(html, "lxml")
+    return bool(soup.select_one(f"a[href*='page={current_page + 1}']"))
 
 
 def _extract_id(url: str) -> str | None:
