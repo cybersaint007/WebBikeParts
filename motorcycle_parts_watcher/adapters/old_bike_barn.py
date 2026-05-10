@@ -352,10 +352,14 @@ def parse_collection_title(title: str) -> list[tuple[str, str]]:
 async def _fetch_json(
     url: str, settings: Settings, limiter: AsyncRateLimiter
 ) -> dict[str, Any]:
+    # No Accept-Language: Shopify's storefront uses the request locale to drive
+    # geographic currency conversion (e.g. en-US from a TW IP returns TWD prices
+    # in the same `price` field with no separate currency indicator). Omitting
+    # the header makes the response use the store's native currency (USD for
+    # OBB) regardless of where the worker runs.
     headers = {
         "User-Agent": USER_AGENT,
         "Accept": "application/json",
-        "Accept-Language": "en-US,en;q=0.9",
     }
     async with build_async_client(settings) as client:
         await limiter.wait()
