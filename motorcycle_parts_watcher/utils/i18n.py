@@ -12,6 +12,7 @@ dictionary (no LLM, no network call). Extend PARTS_DICT as gaps surface.
 from __future__ import annotations
 
 import re
+import threading
 from typing import Any
 
 
@@ -96,6 +97,52 @@ _INDEX: dict[str, dict[int, dict[str, dict[str, str]]]] = {
 }
 
 
+_glossary_lock = threading.Lock()
+_glossary_loaded = False
+
+
+def _load_glossary_from_db() -> None:
+    """Merge watcher.parts_glossary rows into PARTS_DICT and rebuild _INDEX.
+    Silently no-ops if the DB is unavailable (unit tests without a DB connection).
+    """
+    global _glossary_loaded
+    try:
+        import sqlalchemy as sa
+        from motorcycle_parts_watcher.db import engine  # noqa: PLC0415
+
+        with engine.connect() as conn:
+            rows = conn.execute(
+                sa.text("SELECT term_en, term_zh, term_ja FROM watcher.parts_glossary WHERE term_en IS NOT NULL")
+            ).mappings().all()
+
+        existing_en = {_norm(r["en"]) for r in PARTS_DICT}
+        for row in rows:
+            if _norm(row["term_en"]) in existing_en:
+                continue
+            entry: dict[str, str] = {"en": row["term_en"]}
+            if row["term_zh"]:
+                entry[LANG_ZH] = row["term_zh"]
+            if row["term_ja"]:
+                entry[LANG_JA] = row["term_ja"]
+            PARTS_DICT.append(entry)
+
+        for lang in (LANG_EN, LANG_ZH, LANG_JA):
+            _INDEX[lang] = _build_index(lang)
+    except Exception:
+        pass
+    finally:
+        _glossary_loaded = True
+
+
+def _ensure_glossary_loaded() -> None:
+    global _glossary_loaded
+    if _glossary_loaded:
+        return
+    with _glossary_lock:
+        if not _glossary_loaded:
+            _load_glossary_from_db()
+
+
 _HIRAGANA_RE = re.compile(r"[぀-ゟ]")
 _KATAKANA_RE = re.compile(r"[゠-ヿ]")
 _CJK_RE      = re.compile(r"[一-鿿]")
@@ -124,6 +171,7 @@ def translate(text: str, target_lang: str) -> str:
     - Phrase-greedy: "oil filter" matches as one entry, not as ["oil", "filter"].
     - Unknown tokens pass through verbatim (proper nouns, model numbers, …).
     """
+    _ensure_glossary_loaded()
     text = (text or "").strip()
     if not text:
         return text

@@ -58,6 +58,12 @@
                         <i class="ri-eye-line"></i> <span>{{ __('Watch List') }}</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link {{ request()->routeIs('glossary.*') ? 'active' : '' }}"
+                       href="{{ route('glossary.index') }}">
+                        <i class="ri-translate-2"></i> <span>{{ __('Parts Glossary') }}</span>
+                    </a>
+                </li>
                 @if (auth()->user()?->isAdmin())
                 <li class="menu-title"><span>{{ __('Admin') }}</span></li>
                 <li class="nav-item">

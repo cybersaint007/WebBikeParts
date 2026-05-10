@@ -265,5 +265,22 @@
     "Didn't receive a code?": "沒收到驗證碼？",
     "Resend": "重新傳送",
 
-    "Logout": "登出"
+    "Logout": "登出",
+
+    "Parts Glossary": "零件詞彙表",
+    "Add term": "新增詞彙",
+    "Save term": "儲存詞彙",
+    "terms": "個詞彙",
+    "Search parts in English, 繁中, or 日本語…": "以英文、繁中或日文搜尋零件…",
+    "At least one language field is required": "至少需填寫一個語言欄位",
+    "At least two language fields are required when auto-translation is not configured": "未設定自動翻譯時，至少需填寫兩個語言欄位",
+    "Translation auto-filled by AI": "翻譯由 AI 自動補全",
+    "Term saved successfully": "詞彙儲存成功",
+    "Enter the part name in at least one language. Missing translations will be auto-filled by AI if configured.": "請在至少一個語言中輸入零件名稱。若已設定，缺少的翻譯將由 AI 自動補全。",
+    "User contributed": "用戶貢獻",
+    "Notes": "備註",
+    "optional": "選填",
+    "Optional notes, synonyms, or context": "選填備註、同義詞或說明",
+    "No results for \":query\"": "找不到「:query」的結果",
+    "Could not generate a URL slug from the provided term": "無法從輸入的詞彙生成識別碼"
 }

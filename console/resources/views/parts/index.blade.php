@@ -128,7 +128,9 @@
                         <input id="parts-q" type="search" class="form-control flex-grow-1"
                                style="max-width:380px"
                                placeholder="{{ __('Instant search: title, part #, fitment…') }}"
-                               value="{{ request('q') }}">
+                               value="{{ request('q') }}"
+                               list="glossary-suggestions" autocomplete="off">
+                        <datalist id="glossary-suggestions"></datalist>
                         @if (count($myBikeOptions) > 0)
                         <select id="live-search-bike" class="form-select" style="max-width:220px"
                                 title="{{ __('Scope live search to a specific bike') }}">
@@ -524,6 +526,29 @@ const PARTS_I18N = @json($partsI18n);
     })();
 
     attachLiveBtn();
+
+    // Glossary autocomplete for the live-search input
+    (function () {
+        const glossaryList = document.getElementById('glossary-suggestions');
+        if (!qInput || !glossaryList) return;
+        let acTimer;
+        qInput.addEventListener('input', () => {
+            clearTimeout(acTimer);
+            const q = qInput.value.trim();
+            if (q.length < 2) { glossaryList.innerHTML = ''; return; }
+            acTimer = setTimeout(async () => {
+                try {
+                    const r = await fetch('{{ route("glossary.autocomplete") }}?q=' + encodeURIComponent(q));
+                    if (!r.ok) return;
+                    const terms = await r.json();
+                    glossaryList.innerHTML = terms.map(t => {
+                        const label = [t.en, t.zh, t.ja].filter(Boolean).join(' / ');
+                        return `<option value="${escapeHtml(t.en)}">${escapeHtml(label)}</option>`;
+                    }).join('');
+                } catch (_) {}
+            }, 150);
+        });
+    })();
 
     // Keep Subcategory dropdown in sync with Category (slugs are `<cat>-<sub>`).
     const catSelect = document.getElementById('parts-filter-category');

@@ -10,6 +10,7 @@ use App\Http\Controllers\SyncController;
 use App\Http\Controllers\WatchListController;
 use App\Http\Controllers\Admin\UsersController as AdminUsersController;
 use App\Http\Controllers\Admin\AdapterStatusController;
+use App\Http\Controllers\GlossaryController;
 use App\Http\Controllers\ProfileController;
 
 Auth::routes(['register' => false]);
@@ -46,6 +47,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/watch-list',                    [WatchListController::class, 'index'])->name('watch-list.index');
     Route::patch('/watch-list/{watch}/priority', [WatchListController::class, 'togglePriority'])->name('watch-list.priority');
     Route::delete('/watch-list/{watch}',         [WatchListController::class, 'destroy'])->name('watch-list.destroy');
+
+    Route::get('/glossary',              [GlossaryController::class, 'index'])->name('glossary.index');
+    Route::get('/glossary/search.json',  [GlossaryController::class, 'searchJson'])->name('glossary.search');
+    Route::get('/glossary/autocomplete', [GlossaryController::class, 'autocomplete'])->name('glossary.autocomplete');
+    Route::post('/glossary',             [GlossaryController::class, 'store'])->name('glossary.store');
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
         Route::resource('users', AdminUsersController::class)->names('users');

@@ -231,5 +231,22 @@
     "Didn't receive a code?": "Didn't receive a code?",
     "Resend": "Resend",
 
-    "Logout": "Logout"
+    "Logout": "Logout",
+
+    "Parts Glossary": "Parts Glossary",
+    "Add term": "Add term",
+    "Save term": "Save term",
+    "terms": "terms",
+    "Search parts in English, 繁中, or 日本語…": "Search parts in English, 繁中, or 日本語…",
+    "At least one language field is required": "At least one language field is required",
+    "At least two language fields are required when auto-translation is not configured": "At least two language fields are required when auto-translation is not configured",
+    "Translation auto-filled by AI": "Translation auto-filled by AI",
+    "Term saved successfully": "Term saved successfully",
+    "Enter the part name in at least one language. Missing translations will be auto-filled by AI if configured.": "Enter the part name in at least one language. Missing translations will be auto-filled by AI if configured.",
+    "User contributed": "User contributed",
+    "Notes": "Notes",
+    "optional": "optional",
+    "Optional notes, synonyms, or context": "Optional notes, synonyms, or context",
+    "No results for \":query\"": "No results for \":query\"",
+    "Could not generate a URL slug from the provided term": "Could not generate a URL slug from the provided term"
 }

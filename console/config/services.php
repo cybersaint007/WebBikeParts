@@ -34,4 +34,9 @@ return [
         'verification_token' => env('EBAY_VERIFICATION_TOKEN'),
     ],
 
+    'anthropic' => [
+        'key'   => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-haiku-4-5'),
+    ],
+
 ];
