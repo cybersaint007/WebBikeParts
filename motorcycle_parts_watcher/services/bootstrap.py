@@ -14,6 +14,7 @@ def seed_sources(session: Session, settings: Settings) -> None:
         "buyee": ("web", "https://buyee.jp", settings.buyee_enabled),
         "webike": ("web", "https://www.webike.tw", settings.webike_enabled),
         "webike_search": ("web", "https://www.webike.tw", settings.webike_search_enabled),
+        "old_bike_barn": ("web", "https://oldbikebarn.com", settings.old_bike_barn_enabled),
         "manual_search": ("manual", "local://manual", settings.manual_search_enabled),
     }
     existing_map = {src.name: src for src in session.scalars(select(Source)).all()}

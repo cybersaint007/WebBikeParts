@@ -17,6 +17,7 @@ from motorcycle_parts_watcher.adapters import (
     ManualSearchAdapter,
     MercariAdapter,
     MonotaroAdapter,
+    OldBikeBarnAdapter,
     RakutenAdapter,
     WebikeAdapter,
     WebikeJpAdapter,
@@ -53,6 +54,7 @@ def _build_adapters(settings: Settings) -> list:
         RakutenAdapter(settings),
         MonotaroAdapter(settings),
         GoobikeAdapter(settings),
+        OldBikeBarnAdapter(settings),
         ManualSearchAdapter(settings),
     ]
 

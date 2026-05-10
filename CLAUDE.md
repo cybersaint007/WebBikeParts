@@ -47,7 +47,7 @@ parts-watch crawl-watches                         # watch sweep only
 parts-watch search --query "exhaust" --bike-key suzuki-katana-1100-1990   # enqueues + waits
 
 # CLI — worker side (claims and runs jobs)
-parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search
+parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search,old_bike_barn
 parts-watch worker --worker-id jp-1 --adapters webike_jp,yahoo_auctions,croooober,mercari,monotaro,rakuten,goobike
 
 # CLI — queue admin
@@ -79,6 +79,7 @@ The producer and worker are decoupled by the queue so workers can run on geo-dis
 - **`services/catalog_sync.py`** — webike.tw scraper that populates `watcher.bike_catalog` and `watcher.categories`. Three-pass: (1) scrape the home page for `/mf/{MAKE}/` links to get the full maker list (14 as of 2026-05; `DEFAULT_MAKES` is the offline fallback) and union with `WEBIKE_CATALOG_EXTRA_MAKES` (comma/whitespace-separated, uppercased) to cover brands the homepage doesn't link (e.g. KTM, MV Agusta, Husqvarna); (2) walk `/mf/{MAKE}/{cc}` index pages to upsert one umbrella row per model with `year_start=year_end=0`; (3) for each umbrella, fetch its `/md/{id}` detail page and upsert one row per `年式 : YYYY ~ YYYY` year-range variant (open-ended `~ ` end-years default to the current year), also extracting the first CDN image URL into `image_url`. `BikeCatalog::yearsForModel` returns the umbrella's `0` only when no real variants exist. The maker list used to be hardcoded via `WEBIKE_CATALOG_MAKES`; that env var is no longer read (commit `3b5bafb`). `image_url` is only written when the detail page yields an image — existing non-null values are not cleared if the page yields nothing.
 - **`utils/http.py`** — shared async client factory + `AsyncRateLimiter` + `with_retries`. Adapters must use this, not raw `httpx`.
 - **`adapters/webike_search.py`** — Playwright/headless-Chromium driver for `webike.tw/search?q=…`. Returns the full keyword catalog (paginates up to `MAX_PAGES = 5`), not just the ~20-30 products on a single `/md/{ID}` model page. Uses `source_name = "webike_search"` (distinct from `webike`), so a product appearing in both scrapes generates two rows; the `url` UNIQUE constraint on `watcher.listings` prevents physical duplicates. **Cloudflare-blocked from data-center / VPS IPs** — without `WEBIKE_PROXY_URL` set to a residential proxy (`socks5://user:pass@host:port` or `http://…`) the adapter logs a one-line WARNING and returns `[]`. Requires Playwright + Chromium; the Chromium binary is preinstalled in `Dockerfile.crawler` via `playwright install chromium --with-deps`.
+- **`adapters/old_bike_barn.py`** — Shopify storefront for vintage Japanese parts (oldbikebarn.com). Uses two public JSON endpoints: `/collections.json?limit=250&page=N` (paginated, ~1000 collections total) and `/collections/{handle}/products.json?limit=250&page=N`. No API key, no WAF games. Bike→handle resolution is title-regex over the collection list (e.g. `"Suzuki GS1100 Parts (1980–1983)"` → `(Suzuki, GS1100)`), with the parsed map cached in-process for 24h via a class-level `_CollectionIndex`. Year filtering is **deliberately permissive** — the adapter ingests every product in the matched collection regardless of per-product year shorthand (e.g. `"Suzuki 80-81 GS1100 Engine Gasket Set"`); fitment refinement happens search-side via the ILIKE on `fitment_text`. Lookup falls back from whole `BikeRef.model` to the first model token, so a webike-catalog row like `model="GSX1100S KATANA"` still finds OBB's `GSX1100S` collection. Multi-model `"CB350 & CL350"` collections are split into both keys at index time. Rate-limited to 1 rps regardless of `HTTP_RATE_LIMIT_PER_SECOND`.
 
 ### Queue conventions
 
@@ -187,6 +188,7 @@ YAHOO_AUCTIONS_ENABLED=true
 BUYEE_ENABLED=true
 MONOTARO_ENABLED=true
 MANUAL_SEARCH_ENABLED=true
+OLD_BIKE_BARN_ENABLED=true   # Shopify storefront for vintage Japanese parts; no API key
 HTTP_TIMEOUT_SECONDS=20   HTTP_RETRIES=3   HTTP_RATE_LIMIT_PER_SECOND=3
 ```
 
@@ -202,11 +204,11 @@ HTTP_TIMEOUT_SECONDS=20   HTTP_RETRIES=3   HTTP_RATE_LIMIT_PER_SECOND=3
 - `nginx` — serves `console/public/` + the named `bike_images` volume on port `8080`
 - `queue` — `php artisan queue:work --queue=sync --sleep=3 --tries=1 --timeout=1800`
 - `scheduler` — `while true; php artisan schedule:run; sleep 60; done` (no host cron needed)
-- `crawler` — `parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search,yahoo_auctions,monotaro`
+- `crawler` — `parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search,yahoo_auctions,monotaro,old_bike_barn`
 
 Bring it up with `docker compose up -d --build`. The `bike_images` named volume is mounted into both `php` (at `public/bike-images/`) and `nginx` (at `/var/www/bike-images/`, served via an alias) so user uploads survive container rebuilds. The external `postgresql_pgnet` network must exist before `docker compose up` — it's the network that the host's `postgresql` container is attached to.
 
-**Note — `webike_search` is not in the compose worker's allowlist.** The `crawler` service runs `--adapters ebay,buyee,webike,manual_search,yahoo_auctions,monotaro`, so even with `WEBIKE_SEARCH_ENABLED=true` the producer enqueues `webike_search` jobs that no worker claims. To enable: extend the allowlist in `docker-compose.yml`, or run a dedicated worker (typically on a host with a residential proxy / non-data-center IP).
+**Note — `webike_search` is not in the compose worker's allowlist.** The `crawler` service runs `--adapters ebay,buyee,webike,manual_search,yahoo_auctions,monotaro,old_bike_barn`, so even with `WEBIKE_SEARCH_ENABLED=true` the producer enqueues `webike_search` jobs that no worker claims. To enable: extend the allowlist in `docker-compose.yml`, or run a dedicated worker (typically on a host with a residential proxy / non-data-center IP).
 
 **`Dockerfile.console` bundles `parts-watch` (commit 3b10398).** The PHP image installs the crawler into a venv at `/opt/parts-watch/` and exports `WATCHER_PARTS_WATCH_BIN=/opt/parts-watch/bin/parts-watch`, so the `queue` and `scheduler` containers can shell out via `RunPartsWatchJob`. Operational consequence: a change to the Python crawler (`pyproject.toml`, `motorcycle_parts_watcher/`) now also invalidates the PHP image — the conditional rebuild in CI/deploy already covers this, but PHP-only thinking can mislead estimates.
 

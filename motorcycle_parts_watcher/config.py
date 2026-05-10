@@ -27,6 +27,7 @@ class Settings(BaseModel):
     rakuten_app_id: str = Field(default="", alias="RAKUTEN_APP_ID")
     monotaro_enabled: bool = Field(default=False, alias="MONOTARO_ENABLED")
     goobike_enabled: bool = Field(default=False, alias="GOOBIKE_ENABLED")
+    old_bike_barn_enabled: bool = Field(default=True, alias="OLD_BIKE_BARN_ENABLED")
     manual_search_enabled: bool = Field(default=True, alias="MANUAL_SEARCH_ENABLED")
     http_timeout_seconds: float = Field(default=20, alias="HTTP_TIMEOUT_SECONDS")
     http_retries: int = Field(default=3, alias="HTTP_RETRIES")

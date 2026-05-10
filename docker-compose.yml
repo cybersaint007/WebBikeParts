@@ -111,7 +111,7 @@ services:
       - --worker-id
       - central-1
       - --adapters
-      - ebay,buyee,webike,manual_search,yahoo_auctions,monotaro
+      - ebay,buyee,webike,manual_search,yahoo_auctions,monotaro,old_bike_barn
     depends_on:
       crawler-migrate:
         condition: service_completed_successfully

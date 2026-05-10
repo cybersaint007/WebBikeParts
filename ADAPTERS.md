@@ -44,6 +44,7 @@ Status legend:
 | Webike TW | `webike` | **Live** | HTML scrape | Bike-keyed (`/md/{ID}` pages) |
 | Webike TW search | `webike_search` | **Live** | Playwright (headless Chromium) | Full-catalog keyword search via `/search?q=…` |
 | Monotaro | `monotaro` | **Live (no prices)** | HTML scrape | Industrial parts catalog |
+| Old Bike Barn | `old_bike_barn` | **Live** | Shopify JSON | US store, vintage Japanese OEM/aftermarket |
 | Manual search | `manual_search` | **Live** | Local fallback | Query-driven only |
 | Webike JP | `webike_jp` | Stub | — | Geo-redirected to webike.tw |
 | Croooober | `croooober` | Stub | — | Public catalog domain dead |
@@ -218,6 +219,41 @@ MONOTARO_ENABLED=true
 No API key.
 
 **When it's useful.** Monotaro is at its best when the bike-derived search returns generic noise. Use the live-search bar in the console with specific part names (`オイルフィルター`, `ブレーキパッド`) to narrow it.
+
+---
+
+### Old Bike Barn (`old_bike_barn`)
+
+**What it pulls.** US-based vintage Japanese motorcycle parts catalog (oldbikebarn.com) — OEM, aftermarket, and NOS for '60s–'90s Honda / Yamaha / Suzuki / Kawasaki. Bike-keyed: every product returned is from a per-model collection, so titles are model-relevant by construction.
+
+**How it works.** Two public Shopify JSON endpoints:
+- `GET /collections.json?limit=250&page=N` — the full collection list (~1000 entries, paginated 4× at 250).
+- `GET /collections/{handle}/products.json?limit=250&page=N` — products in one bike's collection.
+
+On first call per worker process, `_CollectionIndex.build()` fetches all collection pages and parses each title (`"Suzuki GS1100 Parts (1980–1983) – OEM & Aftermarket Motorcycle Parts"`) into `(make, model)` pairs, building a case-insensitive lookup map. The index is cached for 24h on a class attribute so subsequent jobs reuse it.
+
+`fetch()` resolves the `BikeRef` to one or more collection handles and pages through each collection's products. Lookup keys are the lowercased `(make, model)` plus, as a fallback, `(make, first_token_of_model)` — so a webike-catalog row like `model="GSX1100S KATANA"` still finds OBB's `GSX1100S` collection. Multi-model titles like `"CB350 & CL350 Parts"` are split into both keys at index time.
+
+**Year filtering is intentionally permissive.** A "Suzuki GS1100 Parts (1980–1983)" collection covers every GS1100 sub-variant (E/ES/G/GK/etc.); per-product titles use dealer shorthand like "Suzuki 80-81 GS1100 Engine Gasket Set". The adapter ingests the whole collection and surfaces the per-product fitment in `fitment_text` so the UI's ILIKE-based search can refine.
+
+**Per-row metadata.**
+- `source_item_id` = Shopify product ID (numeric, stable).
+- `url` = `https://oldbikebarn.com/products/{handle}`.
+- `part_number` = first variant's SKU (typically the manufacturer part number, e.g. `18-0175`).
+- `category` = Shopify `product_type` (e.g. `Engine`, `Brakes`).
+- `condition` = `"new"` (OBB doesn't sell pulled / used parts).
+- `listing_status` = `"active"` if `variants[0].available`, else `"out_of_stock"`.
+- `raw_json.collection_handle` = the OBB collection that surfaced this row.
+
+**Configuration.**
+
+```env
+OLD_BIKE_BARN_ENABLED=true
+```
+
+No API key, no proxy, no Playwright. Rate-limited to 1 rps internally regardless of `HTTP_RATE_LIMIT_PER_SECOND` to stay polite on Shopify's free tier.
+
+**robots.txt.** Permissive for catalog scraping. The "no automated scraping" notice in the file is specifically about checkout buy-bots — `/products.json` and `/collections.json` are the documented public Shopify endpoints.
 
 ---
 
