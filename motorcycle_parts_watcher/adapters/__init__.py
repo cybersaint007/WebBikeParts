@@ -8,6 +8,7 @@ from motorcycle_parts_watcher.adapters.monotaro import MonotaroAdapter
 from motorcycle_parts_watcher.adapters.old_bike_barn import OldBikeBarnAdapter
 from motorcycle_parts_watcher.adapters.rakuten import RakutenAdapter
 from motorcycle_parts_watcher.adapters.webike import WebikeAdapter
+from motorcycle_parts_watcher.adapters.webike_cat import WebikeCatAdapter
 from motorcycle_parts_watcher.adapters.webike_jp import WebikeJpAdapter
 from motorcycle_parts_watcher.adapters.webike_search import WebikeSearchAdapter
 from motorcycle_parts_watcher.adapters.yahoo_auctions import YahooAuctionsAdapter
@@ -23,6 +24,7 @@ __all__ = [
     "OldBikeBarnAdapter",
     "RakutenAdapter",
     "WebikeAdapter",
+    "WebikeCatAdapter",
     "WebikeJpAdapter",
     "WebikeSearchAdapter",
     "YahooAuctionsAdapter",

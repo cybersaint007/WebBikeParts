@@ -19,6 +19,7 @@ class Settings(BaseModel):
     buyee_enabled: bool = Field(default=False, alias="BUYEE_ENABLED")
     webike_enabled: bool = Field(default=False, alias="WEBIKE_ENABLED")
     webike_search_enabled: bool = Field(default=False, alias="WEBIKE_SEARCH_ENABLED")
+    webike_cat_enabled: bool = Field(default=False, alias="WEBIKE_CAT_ENABLED")
     webike_proxy_url: str = Field(default="", alias="WEBIKE_PROXY_URL")
     webike_jp_enabled: bool = Field(default=False, alias="WEBIKE_JP_ENABLED")
     croooober_enabled: bool = Field(default=False, alias="CROOOOBER_ENABLED")

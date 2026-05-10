@@ -14,6 +14,7 @@ def seed_sources(session: Session, settings: Settings) -> None:
         "buyee":           ("web",    "https://buyee.jp",                   settings.buyee_enabled),
         "webike":          ("web",    "https://www.webike.tw",              settings.webike_enabled),
         "webike_search":   ("web",    "https://www.webike.tw",              settings.webike_search_enabled),
+        "webike_cat":      ("web",    "https://www.webike.tw",              settings.webike_cat_enabled),
         "webike_jp":       ("web",    "https://www.webike.jp",              settings.webike_jp_enabled),
         "croooober":       ("web",    "https://croooober.com",              settings.croooober_enabled),
         "mercari":         ("web",    "https://jp.mercari.com",             settings.mercari_enabled),
