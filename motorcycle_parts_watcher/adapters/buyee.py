@@ -45,6 +45,7 @@ class BuyeeAdapter:
 
     name = "buyee"
     preferred_query_lang: str | None = "ja"
+    is_keyword_search: bool = True
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings

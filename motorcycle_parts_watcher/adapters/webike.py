@@ -33,6 +33,7 @@ class WebikeAdapter:
 
     name = "webike"
     preferred_query_lang: str | None = "zh-TW"
+    is_keyword_search: bool = False
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings

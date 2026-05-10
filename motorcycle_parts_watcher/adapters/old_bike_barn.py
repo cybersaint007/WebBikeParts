@@ -91,6 +91,7 @@ _HEAD_TOKEN_ALIASES: dict[tuple[str, str], str] = {
 class OldBikeBarnAdapter:
     name = "old_bike_barn"
     preferred_query_lang: str | None = "en"
+    is_keyword_search: bool = False
 
     # Class-scoped cache so a worker process reuses the index across jobs.
     _index: "_CollectionIndex | None" = None

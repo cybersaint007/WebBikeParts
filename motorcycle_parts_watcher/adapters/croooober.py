@@ -25,6 +25,7 @@ class CroooberAdapter:
 
     name = "croooober"
     preferred_query_lang: str | None = None
+    is_keyword_search: bool = False
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings

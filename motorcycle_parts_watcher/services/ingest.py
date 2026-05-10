@@ -5,10 +5,12 @@ from datetime import datetime, timezone
 from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import Session
 
+from motorcycle_parts_watcher.bikes import BikeRef
 from motorcycle_parts_watcher.models import Listing, ListingSnapshot
 from motorcycle_parts_watcher.schemas import NormalizedListing
 from motorcycle_parts_watcher.utils.categorizer import classify
 from motorcycle_parts_watcher.utils.hashing import compute_content_hash
+from motorcycle_parts_watcher.utils.relevance import is_relevant_for_bike
 from motorcycle_parts_watcher.utils.similarity import title_similarity
 
 
@@ -16,7 +18,19 @@ class IngestService:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def ingest_listing(self, listing: NormalizedListing) -> Listing:
+    def ingest_listing(
+        self,
+        listing: NormalizedListing,
+        *,
+        bike: BikeRef | None = None,
+        enforce_relevance: bool = False,
+    ) -> Listing | None:
+        # Keyword-search adapters (eBay, Mercari, ...) routinely return matches
+        # that have no fitment relationship to the bike that triggered the
+        # crawl — Mazda valve caps, Toyota timing covers, handbags ("clutch
+        # bag") etc. Drop them before they enter the listings table.
+        if enforce_relevance and bike is not None and not is_relevant_for_bike(listing, bike):
+            return None
         now = datetime.now(timezone.utc)
         hit = classify(listing.title, listing.description)
         listing.category = hit.category

@@ -298,10 +298,14 @@ class CrawlWorker:
                 return
 
             ingest = IngestService(session)
+            enforce_relevance = bool(getattr(adapter, "is_keyword_search", False))
             ingested = 0
             for listing in listings:
-                ingest.ingest_listing(listing)
-                ingested += 1
+                row = ingest.ingest_listing(
+                    listing, bike=bike, enforce_relevance=enforce_relevance,
+                )
+                if row is not None:
+                    ingested += 1
 
             if job.watch_ids:
                 # match_count is additive across per-adapter completions (semantic A=i):
