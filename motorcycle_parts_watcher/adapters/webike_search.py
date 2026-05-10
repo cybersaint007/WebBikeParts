@@ -164,7 +164,12 @@ def _is_cloudflare_challenge(html: str) -> bool:
 
 
 def _extract_category_urls(html: str) -> list[str]:
-    """Extract unique webike.tw category URLs from Google CSE result elements."""
+    """Extract unique webike.tw category URLs from Google CSE result elements.
+
+    Model-filtered category URLs (/parts/md/{id}/ca/{code}) are canonicalized
+    to their global form (/parts/ca/{code}) so they get paginated correctly and
+    deduplicated against other results pointing at the same category.
+    """
     soup = BeautifulSoup(html, "lxml")
     seen: set[str] = set()
     urls: list[str] = []
@@ -174,6 +179,8 @@ def _extract_category_urls(html: str) -> list[str]:
             if "webike.tw" not in href:
                 continue
             clean = re.sub(r"\?.*", "", href)  # strip Google tracking params
+            # Canonicalize /parts/md/{id}/ca/{code}[/...] → /parts/ca/{code}
+            clean = re.sub(r"/parts/md/\d+/ca/", "/parts/ca/", clean)
             if clean and clean not in seen:
                 seen.add(clean)
                 urls.append(clean)

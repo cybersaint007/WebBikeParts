@@ -84,7 +84,7 @@ class WebikeCatAdapter:
         return results
 
     async def _discover_leaves(self, client, model_base: str, headers: dict) -> list[str]:
-        """Walk model-page category navigation up to 3 levels; return leaf codes."""
+        """Walk model-page category navigation up to 4 levels; return leaf codes."""
         leaves: list[str] = []
 
         html = await self._fetch_html(client, model_base, headers)
@@ -98,7 +98,6 @@ class WebikeCatAdapter:
             if not html:
                 continue
             l2_codes = _extract_child_codes(html, l1, model_base)
-
             if not l2_codes:
                 leaves.append(l1)
                 continue
@@ -109,11 +108,20 @@ class WebikeCatAdapter:
                 if not html:
                     continue
                 l3_codes = _extract_child_codes(html, l2, model_base)
-
                 if not l3_codes:
                     leaves.append(l2)
-                else:
-                    leaves.extend(l3_codes)
+                    continue
+
+                for l3 in l3_codes:
+                    await self._limiter.wait()
+                    html = await self._fetch_html(client, f"{model_base}/ca/{l3}", headers)
+                    if not html:
+                        continue
+                    l4_codes = _extract_child_codes(html, l3, model_base)
+                    if not l4_codes:
+                        leaves.append(l3)
+                    else:
+                        leaves.extend(l4_codes)
 
         return leaves
 
