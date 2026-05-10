@@ -62,6 +62,15 @@ class WebikeAdapter:
                 retries=self.settings.http_retries,
                 backoff_seconds=self.settings.http_retry_backoff_seconds,
             )
+        final = str(response.url)
+        if WEBIKE_BASE not in final:
+            # IP is geo-blocked — webike.tw redirected away (e.g. webike-china.cn).
+            # Raise so the job is marked failed rather than silently returning 0 results.
+            raise RuntimeError(
+                f"webike.tw redirected to {final!r} — IP may be geo-blocked; "
+                "set WEBIKE_PROXY_URL to a residential proxy to bypass"
+            )
+        response.raise_for_status()
         return response.text
 
     def _parse_model_page(self, html: str, bike: BikeRef) -> list[NormalizedListing]:
