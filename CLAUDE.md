@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Two sub-projects sharing one PostgreSQL database (`bike_parts_watcher`):
 
-- **`motorcycle_parts_watcher/`** — Python 3.12+ async crawler. Pulls aftermarket / OEM / used parts listings from eBay, Webike TW (per-bike `/md/` scrape + Playwright `/search` keyword scrape), Yahoo Auctions (JP), Buyee, Monotaro, plus a manual-search fallback, into the `watcher` schema. Several JP sources (`webike_jp`, `croooober`, `mercari`, `rakuten`, `goobike`) are stubs blocked on geo / SPA / API-key issues — see `ADAPTERS.md`. Typer CLI entrypoint: `parts-watch`.
-- **`console/`** — Laravel 12 / PHP 8.2 web UI (Velzon admin template, Vite, Bootstrap 5). Owns the `console` schema, reads from `watcher` via a second DB connection, and **shells out to `parts-watch`** via queued jobs for on-demand crawls and catalog sync.
+- **`motorcycle_parts_watcher/`** — Python 3.12+ async crawler. Pulls aftermarket / OEM / used parts listings from eBay, Webike TW (per-bike `/md/` scrape + Playwright `/search` keyword scrape), Yahoo Auctions (JP), Buyee, Monotaro, Mercari JP (Playwright), Goobike Parts (Playwright), Old Bike Barn, plus a manual-search fallback, into the `watcher` schema. Stub adapters with no live implementation: `webike_jp`, `croooober`, `rakuten` — see `ADAPTERS.md`. Typer CLI entrypoint: `parts-watch`.
+- **`console/`** — Laravel 12 / PHP 8.4 web UI (Velzon admin template, Vite, Bootstrap 5). Owns the `console` schema, reads from `watcher` via a second DB connection, and **shells out to `parts-watch`** via queued jobs for on-demand crawls and catalog sync.
 
 The two pieces are not independent — the console drives crawl scope (users pick bikes; only those get crawled) and triggers ad-hoc work.
 
@@ -47,8 +47,7 @@ parts-watch crawl-watches                         # watch sweep only
 parts-watch search --query "exhaust" --bike-key suzuki-katana-1100-1990   # enqueues + waits
 
 # CLI — worker side (claims and runs jobs)
-parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search,old_bike_barn
-parts-watch worker --worker-id jp-1 --adapters webike_jp,yahoo_auctions,croooober,mercari,monotaro,rakuten,goobike
+parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search,yahoo_auctions,monotaro,old_bike_barn,mercari,goobike
 
 # CLI — queue admin
 parts-watch jobs                                  # counts by (status × adapter)
@@ -65,29 +64,38 @@ parts-watch export --format csv|json
 Data flow:
 **`CrawlProducer` enqueues → `watcher.crawl_jobs` → `CrawlWorker` (one per host) claims → Adapter → `NormalizedListing` → `IngestService` → `watcher.listings`**
 
-The producer and worker are decoupled by the queue so workers can run on geo-distributed hosts (a JP-locale worker for `webike_jp` / `yahoo_auctions` / `croooober` / `mercari` / `monotaro` / `rakuten` / `goobike`; a central worker for `ebay` / `webike` / `manual_search`). Workers connect to the central Postgres over a private link (WireGuard/Tailscale).
+The producer and worker are decoupled by the queue so workers can run on geo-distributed hosts (a JP-locale worker for `yahoo_auctions` / `mercari` / `monotaro` / `rakuten` / `goobike`; a central worker for `ebay` / `webike` / `buyee` / `manual_search` / `old_bike_barn`). Workers connect to the central Postgres over a private link (WireGuard/Tailscale).
 
 - **`adapters/`** — one file per source. All implement `ListingAdapter` from `adapters/base.py`:
   `async fetch(bike: BikeRef, query: str | None = None) -> list[NormalizedListing]`. See `ADAPTERS.md` for the full table of live vs blocked adapters with parse details.
 - **`schemas.py`** — `NormalizedListing` (Pydantic) is the adapter↔ingest contract.
 - **`bikes.py`** — `BikeRef` dataclass; `load_active_bikes(session)` returns the set of bikes any console user has selected (joins `console.user_bikes` cross-schema). The crawl scope is **DB-driven**, not hardcoded.
 - **`services/ingest.py`** — categorizes (`utils/categorizer.py`), hashes (`utils/hashing.py`), upserts on `(source_name, source_item_id)` UNIQUE, always writes one `listing_snapshots` row per crawl.
-- **`services/job_queue.py`** — Postgres-backed queue helpers. Claim path: `UPDATE … WHERE id = (SELECT … FOR UPDATE SKIP LOCKED LIMIT 1)`. Dedup: partial UNIQUE on `(adapter, bike_catalog_key, COALESCE(query,''))` while `status IN ('pending','running')`.
+- **`services/job_queue.py`** — Postgres-backed queue helpers. Claim path: `UPDATE … WHERE id = (SELECT … FOR UPDATE SKIP LOCKED LIMIT 1)`. Dedup: partial UNIQUE on `(adapter, bike_catalog_key, COALESCE(query,''))` while `status IN ('pending','running')`. Stale jobs (worker died mid-run) auto-release after `stale_after_minutes=30` via `release_stale()`, called periodically by each running worker.
 - **`services/crawl.py`** — split into:
   - `CrawlProducer` — `enqueue_for_bike` / `enqueue_all` / `enqueue_watches`. Translates the query *per adapter* via `utils/i18n.py` at enqueue time, so the worker is dumb about translation. The producer is the only side that imports the translation dictionary.
   - `CrawlWorker` — `run_once` / `run_forever`. Claims one job filtered by `--adapters` allowlist, runs the adapter, ingests results via `IngestService`, marks the job complete/failed. Periodically calls `release_stale` so a crashed worker's locked rows return to `pending`.
 - **`services/catalog_sync.py`** — webike.tw scraper that populates `watcher.bike_catalog` and `watcher.categories`. Three-pass: (1) scrape the home page for `/mf/{MAKE}/` links to get the full maker list (14 as of 2026-05; `DEFAULT_MAKES` is the offline fallback) and union with `WEBIKE_CATALOG_EXTRA_MAKES` (comma/whitespace-separated, uppercased) to cover brands the homepage doesn't link (e.g. KTM, MV Agusta, Husqvarna); (2) walk `/mf/{MAKE}/{cc}` index pages to upsert one umbrella row per model with `year_start=year_end=0`; (3) for each umbrella, fetch its `/md/{id}` detail page and upsert one row per `年式 : YYYY ~ YYYY` year-range variant (open-ended `~ ` end-years default to the current year), also extracting the first CDN image URL into `image_url`. `BikeCatalog::yearsForModel` returns the umbrella's `0` only when no real variants exist. The maker list used to be hardcoded via `WEBIKE_CATALOG_MAKES`; that env var is no longer read (commit `3b5bafb`). `image_url` is only written when the detail page yields an image — existing non-null values are not cleared if the page yields nothing.
 - **`utils/http.py`** — shared async client factory + `AsyncRateLimiter` + `with_retries`. Adapters must use this, not raw `httpx`.
-- **`adapters/webike_search.py`** — Playwright/headless-Chromium driver for `webike.tw/search?q=…`. Returns the full keyword catalog (paginates up to `MAX_PAGES = 5`), not just the ~20-30 products on a single `/md/{ID}` model page. Uses `source_name = "webike_search"` (distinct from `webike`), so a product appearing in both scrapes generates two rows; the `url` UNIQUE constraint on `watcher.listings` prevents physical duplicates. **Cloudflare-blocked from data-center / VPS IPs** — without `WEBIKE_PROXY_URL` set to a residential proxy (`socks5://user:pass@host:port` or `http://…`) the adapter logs a one-line WARNING and returns `[]`. Requires Playwright + Chromium; the Chromium binary is preinstalled in `Dockerfile.crawler` via `playwright install chromium --with-deps`.
-- **`adapters/old_bike_barn.py`** — Shopify storefront for vintage Japanese parts (oldbikebarn.com). Uses two public JSON endpoints: `/collections.json?limit=250&page=N` (paginated, ~1000 collections total) and `/collections/{handle}/products.json?limit=250&page=N`. No API key, no WAF games. Bike→handle resolution is title-regex over the collection list (e.g. `"Suzuki GS1100 Parts (1980–1983)"` → `(Suzuki, GS1100)`), with the parsed map cached in-process for 24h via a class-level `_CollectionIndex`. Year filtering is **deliberately permissive** — the adapter ingests every product in the matched collection regardless of per-product year shorthand (e.g. `"Suzuki 80-81 GS1100 Engine Gasket Set"`); fitment refinement happens search-side via the ILIKE on `fitment_text`. Lookup falls back from whole `BikeRef.model` to the first model token, so a webike-catalog row like `model="GSX1100S KATANA"` still finds OBB's `GSX1100S` collection. Multi-model `"CB350 & CL350"` collections are split into both keys at index time. Rate-limited to 1 rps regardless of `HTTP_RATE_LIMIT_PER_SECOND`.
+- **`adapters/webike_search.py`** — Playwright/headless-Chromium driver for `webike.tw/search?q=…`. Returns the full keyword catalog (paginates up to `MAX_PAGES = 5`), not just the ~20-30 products on a single `/md/{ID}` model page. Uses `source_name = "webike_search"` (distinct from `webike`), so a product appearing in both scrapes generates two rows; the `url` UNIQUE constraint on `watcher.listings` prevents physical duplicates. **Cloudflare-blocked from data-center / VPS IPs** — without `WEBIKE_PROXY_URL` set to a residential proxy (`socks5://user:pass@host:port` or `http://…`) the adapter logs a one-line WARNING and returns `[]`. Requires Playwright + Chromium; the Chromium binary is preinstalled in `Dockerfile.crawler` via `playwright install chromium --with-deps`. **Not in the docker-compose crawler allowlist** — add `webike_search` to the `--adapters` list and set `WEBIKE_PROXY_URL` to enable.
+- **`adapters/mercari.py`** — Playwright/headless-Chromium driver for `jp.mercari.com/search?keyword=…`. Pure React SPA; waits for item cards to render then parses DOM with BeautifulSoup. JP-locale listings priced in JPY. `preferred_query_lang = "ja"` so the producer translates queries to Japanese at enqueue time. Paginates up to `MAX_PAGES = 5`.
+- **`adapters/goobike.py`** — Playwright/headless-Chromium driver for `goobike.com/parts/?word=…`. Pure SPA; uses `networkidle` wait then BeautifulSoup parse. JP inventory, daily update cadence. `MAX_PAGES = 3` (conservative). Results in JPY.
+- **`adapters/old_bike_barn.py`** — Shopify storefront for vintage Japanese parts (oldbikebarn.com). Uses two public JSON endpoints: `/collections.json?limit=250&page=N` (paginated, ~1000 collections total) and `/collections/{handle}/products.json?limit=250&page=N`. No API key, no WAF games. Bike→handle resolution is title-regex over the collection list (e.g. `"Suzuki GS1100 Parts (1980–1983)"` → `(Suzuki, GS1100)`), with the parsed map cached in-process for 24h via a class-level `_CollectionIndex`. Year filtering is **deliberately permissive** — the adapter ingests every product in the matched collection regardless of per-product year shorthand; fitment refinement happens search-side via the ILIKE on `fitment_text`. Lookup falls back from whole `BikeRef.model` to the first model token, so a webike-catalog row like `model="GSX1100S KATANA"` still finds OBB's `GSX1100S` collection. Multi-model `"CB350 & CL350"` collections are split into both keys at index time. Rate-limited to 1 rps regardless of `HTTP_RATE_LIMIT_PER_SECOND`.
+
+### Adapter enable gates
+
+**Two gates must both be open** for an adapter to be enqueued:
+1. `<ADAPTER>_ENABLED=true` in `.env` (drives the adapter's `self.enabled` field in `config.py`)
+2. `watcher.sources.enabled = true` for that source's `name` row (DB-level switch)
+
+`services/crawl.py::_crawl_one` filters by both. If a source appears in the worker's `--adapters` allowlist but produces no jobs, check both gates.
 
 ### Queue conventions
 
 - One job row per (bike, adapter, query) tuple. The producer emits *N bikes × M enabled adapters* rows per sweep.
 - Priorities (lower = sooner): `25` live search, `50` watch sweep, `100` bike sweep.
 - `enqueued_by` — opaque tag the CLI uses to follow a particular invocation: `"crawl:<bike>:<id>"`, `"live-search:<id>"`, `"crawl-all"`, `"crawl-watches"`. The CLI's wait-loop (`parts-watch crawl --bike X` / `parts-watch search`) polls `jobs_for_enqueued_by(tag)` until every row is terminal.
-- `console.parts_watches.match_count` is **additive across per-adapter completions**, not per-sweep — every watch-job completion runs `match_count = match_count + :ingested_in_this_job`. Pre-queue, it was overwritten with the sweep total; the new semantic is "lifetime ingested for this watch."
-- Adapters whose `Source` row is `enabled=false` are skipped at enqueue time (existing behaviour preserved). A worker that handles an adapter gets nothing if no producer is enqueueing for it.
+- `console.parts_watches.match_count` is **additive across per-adapter completions**, not per-sweep — every watch-job completion runs `match_count = match_count + :ingested_in_this_job`.
 - A worker connects to the central Postgres for: claim job → look up `BikeRef` → ingest listings → mark complete. Only the adapter's outbound HTTP request leaves the worker host. That's where geo-routing matters.
 
 ### Conventions
@@ -126,28 +134,28 @@ php artisan queue:work --queue=sync
   - `pgsql_watcher` — `watcher` schema; read-only-ish; models under `App\Models\Watcher\*` set `protected $connection = 'pgsql_watcher'`
 - **No DB-level FKs across schemas.** `user_bikes.bike_catalog_id` and `parts_watches.bike_catalog_id` are soft FKs validated at the app layer.
 - **Auth**: registration disabled (`Auth::routes(['register' => false])`). Admin seeded by `AdminUserSeeder` from `ADMIN_EMAIL`/`ADMIN_PASSWORD`. Default: `admin@example.com` / `changeme123`.
-- **Queued jobs** under `app/Jobs/` all shell out to `parts-watch`. The CLI now *enqueues* into `watcher.crawl_jobs` and (for `crawl` / `search`) blocks until the queued jobs hit a terminal state, so Laravel's `SyncRun` semantics are preserved:
-  - `SyncWebikeCatalogJob` — `parts-watch sync-catalog` (unchanged)
+- **Queued jobs** under `app/Jobs/` all shell out to `parts-watch`. The CLI *enqueues* into `watcher.crawl_jobs` and (for `crawl` / `search`) blocks until the queued jobs hit a terminal state, so Laravel's `SyncRun` semantics are preserved:
+  - `SyncWebikeCatalogJob` — `parts-watch sync-catalog`
   - `CrawlBikeJob` — `parts-watch crawl --bike <catalog_key>`, dispatched from `MyBikesController@store`. Times out if no worker is running for the required adapters.
   - `LiveSearchJob` — `parts-watch search --query <q> --bike-key …`
   - `CrawlAllJob` — `parts-watch crawl-all`, dispatched **hourly** by the scheduler (`Console\Kernel::schedule`). Skipped if a previous `crawl_all` SyncRun is still queued/running, so a long sweep doesn't pile up duplicates.
   - `CrawlWatchesJob` — `parts-watch crawl-watches`, dispatched hourly under the same in-flight guard.
   - `RunPartsWatchJob` — base class with the env-override gotcha below
 - **CRITICAL — subprocess env override**: when Laravel shells out, `Process::env([...])` must explicitly set `DATABASE_URL` and `DB_SCHEMA=watcher`. Otherwise the child process inherits Laravel's `DB_SCHEMA=console` and the crawler hits the wrong schema (e.g. `console.sources` doesn't exist). `RunPartsWatchJob` builds `DATABASE_URL` from `WATCHER_DB_USERNAME / WATCHER_DB_PASSWORD / WATCHER_DB_HOST / WATCHER_DB_PORT / WATCHER_DB_DATABASE` (each falling back to the corresponding `DB_*` if unset). See `RunPartsWatchJob.php`.
-- **`SyncRun.output_excerpt` keeps only the last 4000 chars.** A SQLAlchemy bulk-insert traceback's bind-param dump can fill the buffer on its own and hide the exception class at the head. To recover the full traceback, rerun the same `parts-watch` command directly: `source .venv/bin/activate && parts-watch <cmd> 2>&1 | tee /tmp/<cmd>.log`.
-- **Bike images**: `watcher.bike_catalog.image_url` (added in migration `0006_bike_catalog_image`) is written by two independent paths: (a) `catalog_sync.py` during the `/md/{id}` pass, and (b) `MyBikesController` via `refreshImage` (scrapes DuckDuckGo image search with a vqd token handshake) or `uploadImage` (stores the file under `public/bike-images/<catalog_key>-<timestamp>.<ext>` and saves a root-relative URL). Both update the `BikeCatalog` model on the `pgsql_watcher` connection. The image is never cleared by `catalog_sync` if the detail page yields nothing — only an explicit upload/refresh replaces it.
-- **Watch list semantics**: every `/parts/live-search` POST `firstOrCreate`s a `parts_watches` row at high priority (re-promotes if previously revoked). "Revoke priority" sets `is_high_priority=false` + `priority_revoked_at=now()` but **keeps the row**. Only the watch-sweep pass in `services/crawl.py` re-crawls high-priority rows.
+- **`SyncRun.output_excerpt` is null until the subprocess exits.** `Process::run()` is synchronous — it captures stdout/stderr only after the process finishes, then calls `markSuccess/markFailed`. To track live progress of a running `live_search` run, query `watcher.crawl_jobs` directly: `SyncController::show` returns `jobs_done` and `jobs_total` (completed+failed / total) for `status=running` live_search runs, using a time-window join on `enqueued_by LIKE 'live-search:%'` and `created_at` proximity. To recover a full traceback from a failed run: `source .venv/bin/activate && parts-watch <cmd> 2>&1 | tee /tmp/<cmd>.log`.
+- **Live search UI**: the parts page (`resources/views/parts/index.blade.php`) shows a progress bar during live search. Progress is polled every 3 s from `GET /sync/{run}.json` (which returns `jobs_done`/`jobs_total`). Results refresh every 7 s. The active run URL + query are saved to `sessionStorage` on start so the bar reconnects automatically after a page refresh.
+- **Bike images**: `watcher.bike_catalog.image_url` is written by two independent paths: (a) `catalog_sync.py` during the `/md/{id}` pass, and (b) `MyBikesController` via `refreshImage` (DuckDuckGo vqd handshake) or `uploadImage` (stores under `public/bike-images/<catalog_key>-<timestamp>.<ext>`). The image is never cleared by `catalog_sync` if the detail page yields nothing.
+- **Watch list semantics**: every `/parts/live-search` POST `firstOrCreate`s a `parts_watches` row at high priority (re-promotes if previously revoked). "Revoke priority" sets `is_high_priority=false` + `priority_revoked_at=now()` but **keeps the row**. Only the watch-sweep pass re-crawls high-priority rows.
 - **Pagination**: `AppServiceProvider::boot()` calls `Paginator::useBootstrapFive()`. Velzon is Bootstrap 5 — without this, Laravel's default Tailwind paginator markup renders broken.
 - **Routes**: any custom route must come **above** the catch-all `Route::get('{any}', ...)` in `routes/web.php` or it'll be swallowed.
-- **Velzon template baggage**: ~200 demo views ship under `resources/views/` (`apps-*`, `charts-*`, `ui-*`, `forms-*`, `dashboard-*`, etc.) and are reachable only via the `{any}` catch-all → `HomeController::index` (renders any blade whose filename matches). The app's nav never links to them. Don't translate, refactor, or test them. The views actually wired into routes are: `parts/*`, `my-bikes/index`, `watch-list/index`, `admin/users/*`, `admin/adapters/index`, `auth/*`, `layouts/*`, `components/breadcrumb`. The Velzon sidebar's lower demo menu uses `@lang('translation.*')` keys from `resources/lang/<locale>/translation.php` — separate from the JSON files used by the app.
+- **Velzon template baggage**: ~200 demo views ship under `resources/views/` (`apps-*`, `charts-*`, `ui-*`, `forms-*`, `dashboard-*`, etc.) and are reachable only via the `{any}` catch-all → `HomeController::index`. The views actually wired into routes are: `parts/*`, `my-bikes/index`, `watch-list/index`, `admin/users/*`, `admin/adapters/index`, `auth/*`, `layouts/*`, `components/breadcrumb`. Don't translate, refactor, or test the demo views.
 - **Blade `@json([...])` parse trap**: when the array literal contains nested calls with their own arrays (e.g. `__('key', ['x' => 0])`), Blade's regex parser miscounts brackets and emits broken PHP → 500. Build the array in a `@php` block first, then pass the variable: `@json($foo)`.
 
 ### Internationalization (i18n)
 
 - Three locales: `en` (fallback), `ja`, `zh-TW`. Whitelist lives at `config('app.available_locales')`.
 - Translation strings live in `console/resources/lang/{en,ja,zh-TW}.json` — **not** `lang/` at the project root. Laravel's `langPath()` auto-detects to `resources/lang/` because Velzon ships that directory; writing JSON to `lang/` does nothing. Keys are the English source string; lookups via `__('Apply filters')`. Missing keys fall through to the key, so untranslated strings render as English.
-- `app/Http/Middleware/Localization.php` runs in the `web` group and resolves the locale in this order: `?lang=` query → session → cookie → `App\Services\IpLocaleResolver` (ip-api.com country → JP=ja, TW/HK/MO=zh-TW, 24h cache, private/invalid IPs short-circuit) → fallback. The first valid hit is persisted to session + 1y cookie.
-- Manual switching: topbar dropdown links to `index/{locale}` → `HomeController::lang($locale)`, which validates against the whitelist and persists session + cookie.
+- `app/Http/Middleware/Localization.php` runs in the `web` group and resolves the locale in this order: `?lang=` query → session → cookie → `App\Services\IpLocaleResolver` (ip-api.com country → JP=ja, TW/HK/MO=zh-TW, 24h cache, private/invalid IPs short-circuit) → fallback.
 - For JS-side translations, emit a `@php $foo = [...]; @endphp` block above the `<script>` and inject via `const FOO_I18N = @json($foo);` (see the `@json` parse trap above).
 
 ### Key models
@@ -157,7 +165,7 @@ php artisan queue:work --queue=sync
 | `App\Models\User` | `pgsql` | `userBikes()`, `partsWatches()`, helper `selectedCatalogBikeIds()` |
 | `App\Models\UserBike` | `pgsql` | Soft FK to `Watcher\BikeCatalog` |
 | `App\Models\PartsWatch` | `pgsql` | Watch-list row; `is_high_priority` drives re-crawl |
-| `App\Models\SyncRun` | `pgsql` | Tracks queued/running jobs; `kind` = `catalog`/`crawl_bike`/`live_search` |
+| `App\Models\SyncRun` | `pgsql` | Tracks queued/running jobs; `kind` = `catalog`/`crawl_bike`/`live_search`/`crawl_all`/`crawl_watches` |
 | `App\Models\Watcher\BikeCatalog` | `pgsql_watcher` | `displayLabel()`; `availableMakes()`, `modelsForMake()`, `yearsForModel()` for cascading dropdowns |
 | `App\Models\Watcher\Listing` | `pgsql_watcher` | Scopes: `forBikeKeys`, `category`, `source`, `condition`, `priceBetween`, `search` (ILIKE on title/description/part_number/fitment_text) |
 
@@ -187,8 +195,10 @@ WEBIKE_PROXY_URL=             # residential proxy for Cloudflare bypass (socks5:
 YAHOO_AUCTIONS_ENABLED=true
 BUYEE_ENABLED=true
 MONOTARO_ENABLED=true
+MERCARI_ENABLED=true          # Playwright; Chromium required on worker host
+GOOBIKE_ENABLED=true          # Playwright; Chromium required on worker host
 MANUAL_SEARCH_ENABLED=true
-OLD_BIKE_BARN_ENABLED=true   # Shopify storefront for vintage Japanese parts; no API key
+OLD_BIKE_BARN_ENABLED=true
 HTTP_TIMEOUT_SECONDS=20   HTTP_RETRIES=3   HTTP_RATE_LIMIT_PER_SECOND=3
 ```
 
@@ -200,17 +210,17 @@ HTTP_TIMEOUT_SECONDS=20   HTTP_RETRIES=3   HTTP_RATE_LIMIT_PER_SECOND=3
 
 - `php-migrate` (one-shot) → `php artisan migrate --force`
 - `crawler-migrate` (one-shot) → `python3 -m alembic upgrade head`
-- `php` — Laravel PHP-FPM (depends on `php-migrate`)
+- `php` — Laravel PHP-FPM (depends on `php-migrate`); code volume-mounted from `./console`
 - `nginx` — serves `console/public/` + the named `bike_images` volume on port `8080`
 - `queue` — `php artisan queue:work --queue=sync --sleep=3 --tries=1 --timeout=1800`
 - `scheduler` — `while true; php artisan schedule:run; sleep 60; done` (no host cron needed)
-- `crawler` — `parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search,yahoo_auctions,monotaro,old_bike_barn`
+- `crawler` — `parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search,yahoo_auctions,monotaro,old_bike_barn,mercari,goobike`
 
-Bring it up with `docker compose up -d --build`. The `bike_images` named volume is mounted into both `php` (at `public/bike-images/`) and `nginx` (at `/var/www/bike-images/`, served via an alias) so user uploads survive container rebuilds. The external `postgresql_pgnet` network must exist before `docker compose up` — it's the network that the host's `postgresql` container is attached to.
+Bring it up with `docker compose up -d --build`. The `bike_images` named volume is mounted into both `php` (at `public/bike-images/`) and `nginx` (at `/var/www/bike-images/`, served via an alias) so user uploads survive container rebuilds. The external `postgresql_pgnet` network must exist before `docker compose up`.
 
-**Note — `webike_search` is not in the compose worker's allowlist.** The `crawler` service runs `--adapters ebay,buyee,webike,manual_search,yahoo_auctions,monotaro,old_bike_barn`, so even with `WEBIKE_SEARCH_ENABLED=true` the producer enqueues `webike_search` jobs that no worker claims. To enable: extend the allowlist in `docker-compose.yml`, or run a dedicated worker (typically on a host with a residential proxy / non-data-center IP).
+**`Dockerfile.console` intentionally excludes Playwright.** The `queue` and `scheduler` containers only need to enqueue jobs into `watcher.crawl_jobs` — they never run adapters directly. Playwright has no Alpine/musl wheel, so the console image installs the crawler without it. Only `Dockerfile.crawler` runs `playwright install chromium --with-deps`. Consequence: a Python crawler change invalidates the PHP image (CI covers this, but PHP-only estimates can mislead).
 
-**`Dockerfile.console` bundles `parts-watch` (commit 3b10398).** The PHP image installs the crawler into a venv at `/opt/parts-watch/` and exports `WATCHER_PARTS_WATCH_BIN=/opt/parts-watch/bin/parts-watch`, so the `queue` and `scheduler` containers can shell out via `RunPartsWatchJob`. Operational consequence: a change to the Python crawler (`pyproject.toml`, `motorcycle_parts_watcher/`) now also invalidates the PHP image — the conditional rebuild in CI/deploy already covers this, but PHP-only thinking can mislead estimates.
+**`webike_search` is not in the compose crawler allowlist** — even with `WEBIKE_SEARCH_ENABLED=true` the producer enqueues `webike_search` jobs that no worker claims. To enable: add `webike_search` to the `--adapters` list in `docker-compose.yml` and set `WEBIKE_PROXY_URL` (residential proxy required to bypass Cloudflare).
 
 ### CI and deploy
 
@@ -219,25 +229,50 @@ Bring it up with `docker compose up -d --build`. The `bike_images` named volume 
 1. **`python`** — spins up Postgres 16, runs `alembic upgrade head`, then `pytest -q`.
 2. **`laravel`** — same Postgres, runs Alembic for the watcher schema, `php artisan migrate` for console, then `php artisan test`.
 3. **`docker-build`** — builds both Dockerfiles using stub `.env` files.
-4. **`deploy`** — on push to `main`, SSHes to the prod host with `appleboy/ssh-action`, `git pull`s, and **conditionally rebuilds**: if `git diff` shows changes to `Dockerfile.*`, `docker/`, `pyproject.toml`, `alembic/`, or `motorcycle_parts_watcher/`, runs `docker compose up -d --build`; otherwise just `docker compose restart php queue scheduler`. PHP-only changes therefore deploy without an image rebuild — but Python crawler changes do. Keep this in mind when estimating deploy time.
+4. **`deploy`** — on push to `main`, SSHes to the prod host with `appleboy/ssh-action`, `git pull`s, and **conditionally rebuilds**: if `git diff` shows changes to `Dockerfile.*`, `docker/`, `pyproject.toml`, `alembic/`, or `motorcycle_parts_watcher/`, runs `docker compose up -d --build`; otherwise just `docker compose restart php queue scheduler`. PHP-only changes therefore deploy without an image rebuild — but Python crawler changes do.
 
 ### Distributed worker deployment
 
 For geo-routing (e.g. JP-locale scrapers from a JP host to avoid IP blocks):
 
 1. Spin up a remote host. Open a private network link to the central Postgres (WireGuard/Tailscale recommended; do **not** expose Postgres to the public internet).
-2. Install the crawler: clone the repo, `pip install -e ".[dev]"`, copy the `.env` and override `DATABASE_URL` to point at the central DB over the private link.
-3. Run a worker scoped to the adapters that should run from that locale:
+2. Install the crawler: clone the repo, `pip install -e ".[dev]"`, then `playwright install chromium --with-deps` if the worker will run Playwright adapters.
+3. Copy `.env` and override `DATABASE_URL` to point at the central DB over the private link.
+4. Run a worker scoped to the adapters that should run from that locale:
    ```bash
-   parts-watch worker --worker-id jp-1 --adapters webike_jp,yahoo_auctions,croooober,mercari,monotaro,rakuten,goobike
+   parts-watch worker --worker-id jp-1 --adapters yahoo_auctions,mercari,monotaro,goobike
    ```
-4. On the central host run a worker for the rest:
-   ```bash
-   parts-watch worker --worker-id central-1 --adapters ebay,buyee,webike,manual_search
-   ```
-5. Run both as systemd units. The worker periodically calls `release_stale` so a crashed worker's locked rows return to `pending`.
+5. Run as a systemd unit. The worker periodically calls `release_stale` so a crashed worker's locked rows return to `pending`.
 
 Operational notes:
 - Translation runs at producer time on the central host, so the JP worker doesn't import the parts dictionary.
-- A worker only fetches `BikeRef` metadata once per claim (single SELECT); the heavy outbound HTTP is the adapter scrape.
 - `parts-watch jobs` gives a quick health view; `parts-watch jobs --stuck` surfaces rows whose worker died mid-run.
+
+---
+
+## Operational gotchas
+
+### Ghost worker / job contention
+
+Each worker must have a **unique `--worker-id`**. If you run `parts-watch worker` locally while Docker workers are also active, they compete for the same queue. If a local worker dies mid-job, its rows stay `status='running'` until `release_stale` runs (30-minute threshold). Emergency fix:
+
+```sql
+-- In psql on bike_parts_watcher
+UPDATE watcher.crawl_jobs
+SET status='pending', locked_by=NULL, locked_at=NULL, started_at=NULL
+WHERE locked_by='<dead-worker-id>' AND status='running';
+```
+
+Or via CLI: `parts-watch jobs --release-stale` (releases all rows past the 30-min threshold, regardless of worker ID).
+
+### Adapter appears silent
+
+Check both enable gates:
+1. `<ADAPTER>_ENABLED=true` in the producer's `.env` (Python `Settings` class defaults most adapters to `False`)
+2. `SELECT enabled FROM watcher.sources WHERE name='<adapter>';` — must be `true`
+
+If the adapter is enabled in env but the `sources` row is `false`, `_crawl_one` skips it silently at enqueue time.
+
+### Playwright adapters on non-Docker workers
+
+Mercari and Goobike use Playwright. Any worker host running these must have Chromium installed (`playwright install chromium --with-deps`). The `Dockerfile.crawler` does this; `Dockerfile.console` does not. Running a Playwright adapter from the console container will fail.
