@@ -52,7 +52,8 @@
                             <td class="text-end">{{ $u->parts_watches_count }}</td>
                             <td>{{ $u->created_at->format('Y-m-d') }}</td>
                             <td class="text-end">
-                                <a href="{{ route('admin.users.edit', $u) }}" class="btn btn-sm btn-outline-secondary">{{ __('Edit') }}</a>
+                                <a href="{{ route('admin.users.login-history', $u) }}" class="btn btn-sm btn-outline-secondary">{{ __('History') }}</a>
+                                <a href="{{ route('admin.users.edit', $u) }}" class="btn btn-sm btn-outline-secondary ms-1">{{ __('Edit') }}</a>
                                 @if ($u->id !== auth()->id())
                                     <form method="POST" action="{{ route('admin.users.destroy', $u) }}" class="d-inline ms-1">
                                         @csrf @method('DELETE')

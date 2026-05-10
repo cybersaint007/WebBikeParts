@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
         Route::resource('users', AdminUsersController::class)->names('users');
+        Route::get('users/{user}/login-history', [AdminUsersController::class, 'loginHistory'])->name('users.login-history');
         Route::get('adapters', [AdapterStatusController::class, 'index'])->name('adapters.index');
         Route::get('adapters/status.json', [AdapterStatusController::class, 'status'])->name('adapters.status');
     });

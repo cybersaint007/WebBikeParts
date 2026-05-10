@@ -27,6 +27,11 @@ class User extends Authenticatable
         return $this->hasMany(PartsWatch::class);
     }
 
+    public function loginHistories(): HasMany
+    {
+        return $this->hasMany(LoginHistory::class)->latest('login_at');
+    }
+
     public function selectedCatalogBikeIds(): array
     {
         return $this->userBikes()->pluck('bike_catalog_id')->all();

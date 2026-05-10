@@ -84,4 +84,10 @@ class UsersController extends Controller
         $user->delete();
         return redirect()->route('admin.users.index')->with('status', "User {$email} deleted.");
     }
+
+    public function loginHistory(User $user)
+    {
+        $histories = $user->loginHistories()->paginate(50);
+        return view('admin.users.login-history', compact('user', 'histories'));
+    }
 }
