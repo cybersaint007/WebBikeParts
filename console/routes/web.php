@@ -13,7 +13,7 @@ use App\Http\Controllers\Admin\AdapterStatusController;
 
 Auth::routes(['register' => false]);
 
-Route::post('/ebay/account-deletion', [App\Http\Controllers\EbayController::class, 'handleAccountDeletion']);
+Route::match(['GET', 'POST'], '/ebay/account-deletion', [App\Http\Controllers\EbayController::class, 'handleAccountDeletion']);
 
 Route::get('index/{locale}', [App\Http\Controllers\HomeController::class, 'lang']);
 
