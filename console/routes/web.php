@@ -10,6 +10,7 @@ use App\Http\Controllers\SyncController;
 use App\Http\Controllers\WatchListController;
 use App\Http\Controllers\Admin\UsersController as AdminUsersController;
 use App\Http\Controllers\Admin\AdapterStatusController;
+use App\Http\Controllers\ProfileController;
 
 Auth::routes(['register' => false]);
 
@@ -18,9 +19,6 @@ Route::match(['GET', 'POST'], '/ebay/account-deletion', [App\Http\Controllers\Eb
 Route::get('index/{locale}', [App\Http\Controllers\HomeController::class, 'lang']);
 
 Route::get('/', [DashboardController::class, 'index'])->name('root');
-
-Route::post('/update-profile/{id}', [App\Http\Controllers\HomeController::class, 'updateProfile'])->name('updateProfile');
-Route::post('/update-password/{id}', [App\Http\Controllers\HomeController::class, 'updatePassword'])->name('updatePassword');
 
 Route::middleware('auth')->group(function () {
     Route::get('/parts', [PartsController::class, 'index'])->name('parts.index');
@@ -40,6 +38,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/sync',           [SyncController::class, 'store'])->name('sync.store');
     Route::get('/sync/{run}.json', [SyncController::class, 'show'])->name('sync.show');
+
+    Route::get('/profile',           [ProfileController::class, 'show'])->name('profile.show');
+    Route::patch('/profile',         [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile/password',[ProfileController::class, 'updatePassword'])->name('profile.password');
 
     Route::get('/watch-list',                    [WatchListController::class, 'index'])->name('watch-list.index');
     Route::patch('/watch-list/{watch}/priority', [WatchListController::class, 'togglePriority'])->name('watch-list.priority');
