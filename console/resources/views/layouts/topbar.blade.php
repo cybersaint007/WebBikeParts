@@ -163,13 +163,13 @@
                 </div>
 
                 <div class="ms-1 header-item d-none d-sm-flex">
-                    <button type="button" class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle" data-toggle="fullscreen">
+                    <button type="button" class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle" id="topbar-fullscreen-btn" data-toggle="fullscreen">
                         <i class='bx bx-fullscreen fs-22'></i>
                     </button>
                 </div>
 
                 <div class="ms-1 header-item d-none d-sm-flex">
-                    <button type="button" class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle light-dark-mode">
+                    <button type="button" class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle light-dark-mode" id="topbar-theme-btn">
                         <i class='bx bx-moon fs-22'></i>
                     </button>
                 </div>
@@ -197,3 +197,62 @@
         </div>
     </div>
 </header>
+
+<script>
+(function () {
+    function toggleTheme() {
+        var html = document.documentElement;
+        var next = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-bs-theme', next);
+        try { sessionStorage.setItem('data-bs-theme', next); } catch (e) {}
+        var icon = document.querySelector('#topbar-theme-btn i');
+        if (icon) {
+            icon.classList.toggle('bx-moon', next === 'light');
+            icon.classList.toggle('bx-sun', next === 'dark');
+        }
+    }
+
+    function toggleFullscreen() {
+        document.body.classList.toggle('fullscreen-enable');
+        var d = document, e = d.documentElement;
+        var inFs = d.fullscreenElement || d.webkitFullscreenElement || d.mozFullScreenElement;
+        if (!inFs) {
+            (e.requestFullscreen || e.webkitRequestFullscreen || e.mozRequestFullScreen).call(e);
+        } else {
+            (d.exitFullscreen || d.webkitExitFullscreen || d.mozCancelFullScreen).call(d);
+        }
+    }
+
+    function bind(el, handler) {
+        if (!el || el.dataset.topbarBound === '1') return;
+        el.dataset.topbarBound = '1';
+        el.addEventListener('click', function (ev) { ev.preventDefault(); handler(); });
+    }
+
+    function init() {
+        bind(document.getElementById('topbar-fullscreen-btn'), toggleFullscreen);
+        bind(document.getElementById('topbar-theme-btn'), toggleTheme);
+
+        var saved = null;
+        try { saved = sessionStorage.getItem('data-bs-theme'); } catch (e) {}
+        if (saved) {
+            document.documentElement.setAttribute('data-bs-theme', saved);
+            var icon = document.querySelector('#topbar-theme-btn i');
+            if (icon) {
+                icon.classList.toggle('bx-moon', saved === 'light');
+                icon.classList.toggle('bx-sun', saved === 'dark');
+            }
+        }
+
+        document.addEventListener('fullscreenchange', function () {
+            if (!document.fullscreenElement) document.body.classList.remove('fullscreen-enable');
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
