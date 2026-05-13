@@ -102,6 +102,7 @@ services:
 
   # ── Crawler worker (central adapters) ─────────────────────────────────────
   crawler:
+    init: true   # tini as PID 1 reaps orphaned Chromium helpers from Playwright
     build:
       context: .
       dockerfile: Dockerfile.crawler
