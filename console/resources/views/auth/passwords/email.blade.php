@@ -74,7 +74,7 @@
 
                                         <div class="text-end">
                                             <button class="btn btn-primary w-md waves-effect waves-light"
-                                                type="button">{{ __('Reset') }}</button>
+                                                type="submit">{{ __('Reset') }}</button>
                                         </div>
 
                                     </form>

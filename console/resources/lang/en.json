@@ -6,7 +6,6 @@
     "Watch List": "Watch List",
     "Users": "Users",
     "Adapter Status": "Adapter Status",
-
     "Search...": "Search...",
     "Search ...": "Search ...",
     "Profile": "Profile",
@@ -32,7 +31,6 @@
     "Messages": "Messages",
     "Alerts": "Alerts",
     "Welcome :name!": "Welcome :name!",
-
     "Showing parts for: all crawled bikes": "Showing parts for: all crawled bikes",
     "Limit to my bikes": "Limit to my bikes",
     "You haven't added any bikes yet.": "You haven't added any bikes yet.",
@@ -76,7 +74,6 @@
     "Matches an active watch": "Matches an active watch",
     "Searching live sources…": "Searching live sources…",
     "Live search failed": "Live search failed",
-
     "Price not available": "Price not available",
     "shipping": "shipping",
     "Seller": "Seller",
@@ -90,7 +87,6 @@
     "Price": "Price",
     "Availability": "Availability",
     "bike: :key": "bike: :key",
-
     "Bike catalog": "Bike catalog",
     "Last updated :time (:date).": "Last updated :time (:date).",
     "Catalog has never been synced from webike.tw.": "Catalog has never been synced from webike.tw.",
@@ -121,7 +117,6 @@
     "— Choose model —": "— Choose model —",
     "— Choose year —": "— Choose year —",
     "Any year": "Any year",
-
     "Saved searches": "Saved searches",
     "Live searches you run on /parts are auto-saved here as ★ HIGH priority. Every nightly crawl re-runs them. Revoke priority to keep an entry without re-crawling.": "Live searches you run on /parts are auto-saved here as ★ HIGH priority. Every nightly crawl re-runs them. Revoke priority to keep an entry without re-crawling.",
     "No saved searches yet. Run a live search on :link to add one.": "No saved searches yet. Run a live search on :link to add one.",
@@ -136,7 +131,6 @@
     "Revoke priority": "Revoke priority",
     "Promote": "Promote",
     "Remove this watch?": "Remove this watch?",
-
     "All users": "All users",
     "New user": "New user",
     "Name": "Name",
@@ -160,7 +154,6 @@
     "Password": "Password",
     "(leave blank to keep current)": "(leave blank to keep current)",
     "Confirm password": "Confirm password",
-
     "Adapters": "Adapters",
     "Stuck threshold:": "Stuck threshold:",
     "min": "min",
@@ -185,7 +178,6 @@
     "off": "off",
     "No adapters reported.": "No adapters reported.",
     "Counts come from :code; \"Stuck\" = jobs in :running whose :locked is older than the stuck threshold. \"Disabled\" health means :flag.": "Counts come from :code; \"Stuck\" = jobs in :running whose :locked is older than the stuck threshold. \"Disabled\" health means :flag.",
-
     "Welcome Back !": "Welcome Back !",
     "Sign in to continue.": "Sign in to continue.",
     "Username": "Username",
@@ -203,12 +195,10 @@
     "Click here": "Click here",
     "Confirm Password": "Confirm Password",
     "Enter confirm password": "Enter confirm password",
-
     "User Details Updated successfully!": "User Details Updated successfully!",
     "Something went wrong!": "Something went wrong!",
     "Password updated successfully!": "Password updated successfully!",
     "Your Current password does not matches with the password you provided. Please try again.": "Your Current password does not matches with the password you provided. Please try again.",
-
     "Create New Account": "Create New Account",
     "Get your free account now": "Get your free account now",
     "Enter email address": "Enter email address",
@@ -230,9 +220,7 @@
     "Confirm": "Confirm",
     "Didn't receive a code?": "Didn't receive a code?",
     "Resend": "Resend",
-
     "Logout": "Logout",
-
     "Parts Glossary": "Parts Glossary",
     "Add term": "Add term",
     "Save term": "Save term",
@@ -249,18 +237,27 @@
     "Optional notes, synonyms, or context": "Optional notes, synonyms, or context",
     "No results for \":query\"": "No results for \":query\"",
     "Could not generate a URL slug from the provided term": "Could not generate a URL slug from the provided term",
-
-    "glossary.category.engine":     "Engine",
-    "glossary.category.brakes":     "Brakes",
+    "glossary.category.engine": "Engine",
+    "glossary.category.brakes": "Brakes",
     "glossary.category.electrical": "Electrical",
     "glossary.category.suspension": "Suspension",
     "glossary.category.drivetrain": "Drivetrain",
-    "glossary.category.exhaust":    "Exhaust",
-    "glossary.category.fuel":       "Fuel",
-    "glossary.category.cooling":    "Cooling",
-    "glossary.category.frame":      "Frame",
-    "glossary.category.body":       "Body",
-    "glossary.category.wheels":     "Wheels",
-    "glossary.category.fasteners":  "Fasteners",
-    "glossary.category.general":    "General"
+    "glossary.category.exhaust": "Exhaust",
+    "glossary.category.fuel": "Fuel",
+    "glossary.category.cooling": "Cooling",
+    "glossary.category.frame": "Frame",
+    "glossary.category.body": "Body",
+    "glossary.category.wheels": "Wheels",
+    "glossary.category.fasteners": "Fasteners",
+    "glossary.category.general": "General",
+    "Reset Password Notification": "Reset Password Notification",
+    "You are receiving this email because we received a password reset request for your account.": "You are receiving this email because we received a password reset request for your account.",
+    "Reset Password": "Reset Password",
+    "This password reset link will expire in :count minutes.": "This password reset link will expire in :count minutes.",
+    "If you did not request a password reset, no further action is required.": "If you did not request a password reset, no further action is required.",
+    "Hello!": "Hello!",
+    "Regards,": "Regards,",
+    "Whoops!": "Whoops!",
+    "All rights reserved.": "All rights reserved.",
+    "If you're having trouble clicking the \":actionText\" button, copy and paste the URL below\ninto your web browser:": "If you're having trouble clicking the \":actionText\" button, copy and paste the URL below\ninto your web browser:"
 }

@@ -6,7 +6,6 @@
     "Watch List": "ウォッチリスト",
     "Users": "ユーザー",
     "Adapter Status": "アダプターステータス",
-
     "Search...": "検索...",
     "Search ...": "検索 ...",
     "Profile": "プロフィール",
@@ -32,7 +31,6 @@
     "Messages": "メッセージ",
     "Alerts": "アラート",
     "Welcome :name!": "ようこそ、:name さん！",
-
     "Showing parts for: all crawled bikes": "表示中のパーツ：クロール済みのすべてのバイク",
     "Limit to my bikes": "マイバイクのみに絞り込む",
     "You haven't added any bikes yet.": "まだバイクが登録されていません。",
@@ -76,7 +74,6 @@
     "Matches an active watch": "有効なウォッチに一致しています",
     "Searching live sources…": "ライブソースを検索中…",
     "Live search failed": "ライブ検索に失敗しました",
-
     "Price not available": "価格情報なし",
     "shipping": "送料",
     "Seller": "出品者",
@@ -90,7 +87,6 @@
     "Price": "価格",
     "Availability": "在庫状況",
     "bike: :key": "バイク: :key",
-
     "Bike catalog": "バイクカタログ",
     "Last updated :time (:date).": "最終更新 :time (:date)。",
     "Catalog has never been synced from webike.tw.": "カタログはまだ webike.tw から同期されていません。",
@@ -121,7 +117,6 @@
     "— Choose model —": "— モデルを選択 —",
     "— Choose year —": "— 年式を選択 —",
     "Any year": "年式を問わない",
-
     "Saved searches": "保存済みの検索",
     "Live searches you run on /parts are auto-saved here as ★ HIGH priority. Every nightly crawl re-runs them. Revoke priority to keep an entry without re-crawling.": "/parts で実行したライブ検索は ★ HIGH 優先で自動的にここに保存され、毎晩のクロールで再実行されます。再クロールせずに残したい場合は優先を解除してください。",
     "No saved searches yet. Run a live search on :link to add one.": "保存済みの検索はまだありません。:link でライブ検索を実行すると追加されます。",
@@ -136,7 +131,6 @@
     "Revoke priority": "優先を解除",
     "Promote": "優先に昇格",
     "Remove this watch?": "このウォッチを削除しますか？",
-
     "All users": "すべてのユーザー",
     "New user": "新規ユーザー",
     "Name": "名前",
@@ -160,7 +154,6 @@
     "Password": "パスワード",
     "(leave blank to keep current)": "（空欄なら現在のパスワードを維持）",
     "Confirm password": "パスワード確認",
-
     "Adapters": "アダプター",
     "Stuck threshold:": "停滞しきい値:",
     "min": "分",
@@ -185,13 +178,11 @@
     "off": "オフ",
     "No adapters reported.": "アダプターの報告はありません。",
     "Counts come from :code; \"Stuck\" = jobs in :running whose :locked is older than the stuck threshold. \"Disabled\" health means :flag.": "件数は :code から取得しています。「停滞」とは :running 状態かつ :locked が停滞しきい値を超えているジョブです。「無効」状態は :flag を意味します。",
-
     "Dashboard": "ダッシュボード",
     "Welcome back, :name": "おかえりなさい、:name さん",
     "Find motorcycle parts": "バイクパーツを検索",
     "Searches eBay, Webike, Buyee, Yahoo Auctions, and more": "eBay・Webike・Buyee・Yahoo オークションなどを検索",
     "e.g. exhaust pipe, brake pads, air filter…": "例：エキゾースト、ブレーキパッド、エアフィルター…",
-    "Search live sources": "ライブソースを検索",
     "Bikes tracked": "登録バイク数",
     "Manage bikes": "バイクを管理",
     "Parts found": "パーツ検索数",
@@ -204,10 +195,8 @@
     "View all": "すべて見る",
     "not crawled": "未クロール",
     "No bikes yet. Add your first bike to start finding parts.": "バイクがまだ登録されていません。最初のバイクを追加してパーツを探しましょう。",
-    "Add a bike": "バイクを追加",
     "Top Watches": "上位ウォッチ",
     "No saved searches yet. Use the search bar above to get started.": "保存済みの検索はありません。上の検索バーから始めてください。",
-    "All bikes": "すべてのバイク",
     "Status": "ステータス",
     "Kind": "種別",
     "Finished": "完了日時",
@@ -219,7 +208,6 @@
     "Searching… this may take up to a minute.": "検索中… 最大1分程度かかる場合があります。",
     "Failed to start search. Please try again.": "検索の開始に失敗しました。もう一度お試しください。",
     "Network error. Please try again.": "ネットワークエラー。もう一度お試しください。",
-
     "Welcome Back !": "おかえりなさい！",
     "Sign in to continue.": "続行するにはサインインしてください。",
     "Username": "ユーザー名",
@@ -237,12 +225,10 @@
     "Click here": "こちらをクリック",
     "Confirm Password": "パスワード確認",
     "Enter confirm password": "確認用パスワードを入力",
-
     "User Details Updated successfully!": "ユーザー情報を更新しました。",
     "Something went wrong!": "問題が発生しました。",
     "Password updated successfully!": "パスワードを更新しました。",
     "Your Current password does not matches with the password you provided. Please try again.": "現在のパスワードが一致しません。もう一度入力してください。",
-
     "Create New Account": "アカウントを新規作成",
     "Get your free account now": "無料アカウントをすぐに取得",
     "Enter email address": "メールアドレスを入力",
@@ -264,9 +250,7 @@
     "Confirm": "確認",
     "Didn't receive a code?": "コードが届きませんか？",
     "Resend": "再送信",
-
     "Logout": "ログアウト",
-
     "Parts Glossary": "部品用語集",
     "Add term": "用語を追加",
     "Save term": "用語を保存",
@@ -283,18 +267,27 @@
     "Optional notes, synonyms, or context": "備考・同義語・補足説明（任意）",
     "No results for \":query\"": "「:query」の結果が見つかりません",
     "Could not generate a URL slug from the provided term": "入力された用語からスラッグを生成できませんでした",
-
-    "glossary.category.engine":     "エンジン",
-    "glossary.category.brakes":     "ブレーキ",
+    "glossary.category.engine": "エンジン",
+    "glossary.category.brakes": "ブレーキ",
     "glossary.category.electrical": "電装",
     "glossary.category.suspension": "サスペンション",
     "glossary.category.drivetrain": "駆動系",
-    "glossary.category.exhaust":    "排気",
-    "glossary.category.fuel":       "燃料",
-    "glossary.category.cooling":    "冷却",
-    "glossary.category.frame":      "フレーム",
-    "glossary.category.body":       "外装",
-    "glossary.category.wheels":     "ホイール",
-    "glossary.category.fasteners":  "ボルト類",
-    "glossary.category.general":    "その他"
+    "glossary.category.exhaust": "排気",
+    "glossary.category.fuel": "燃料",
+    "glossary.category.cooling": "冷却",
+    "glossary.category.frame": "フレーム",
+    "glossary.category.body": "外装",
+    "glossary.category.wheels": "ホイール",
+    "glossary.category.fasteners": "ボルト類",
+    "glossary.category.general": "その他",
+    "Reset Password Notification": "パスワードリセットのお知らせ",
+    "You are receiving this email because we received a password reset request for your account.": "お客様のアカウントについてパスワードリセットのリクエストを受け取ったため、このメールをお送りしています。",
+    "Reset Password": "パスワードをリセット",
+    "This password reset link will expire in :count minutes.": "このパスワードリセットリンクは :count 分後に無効になります。",
+    "If you did not request a password reset, no further action is required.": "パスワードリセットをリクエストしていない場合は、特に操作は必要ありません。",
+    "Hello!": "こんにちは！",
+    "Regards,": "今後ともよろしくお願いいたします。",
+    "Whoops!": "おっと！",
+    "All rights reserved.": "無断複写・転載を禁じます。",
+    "If you're having trouble clicking the \":actionText\" button, copy and paste the URL below\ninto your web browser:": "「:actionText」ボタンをクリックできない場合は、以下のURLをコピーしてウェブブラウザに貼り付けてください："
 }

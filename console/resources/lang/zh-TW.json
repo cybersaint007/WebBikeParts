@@ -6,7 +6,6 @@
     "Watch List": "追蹤清單",
     "Users": "使用者",
     "Adapter Status": "Adapter 狀態",
-
     "Search...": "搜尋...",
     "Search ...": "搜尋 ...",
     "Profile": "個人資料",
@@ -32,7 +31,6 @@
     "Messages": "訊息",
     "Alerts": "警示",
     "Welcome :name!": "歡迎，:name！",
-
     "Showing parts for: all crawled bikes": "顯示零件範圍：所有已爬取的機車",
     "Limit to my bikes": "僅顯示我的機車",
     "You haven't added any bikes yet.": "您尚未新增任何機車。",
@@ -76,7 +74,6 @@
     "Matches an active watch": "符合一個有效的追蹤條件",
     "Searching live sources…": "正在搜尋即時來源…",
     "Live search failed": "即時搜尋失敗",
-
     "Price not available": "目前無價格",
     "shipping": "運費",
     "Seller": "賣家",
@@ -90,7 +87,6 @@
     "Price": "價格",
     "Availability": "庫存狀態",
     "bike: :key": "機車：:key",
-
     "Bike catalog": "機車型錄",
     "Last updated :time (:date).": "最後更新 :time（:date）。",
     "Catalog has never been synced from webike.tw.": "尚未從 webike.tw 同步過型錄。",
@@ -121,7 +117,6 @@
     "— Choose model —": "— 選擇型號 —",
     "— Choose year —": "— 選擇年份 —",
     "Any year": "不限年份",
-
     "Saved searches": "已儲存的搜尋",
     "Live searches you run on /parts are auto-saved here as ★ HIGH priority. Every nightly crawl re-runs them. Revoke priority to keep an entry without re-crawling.": "您在 /parts 執行的即時搜尋會以 ★ HIGH 優先順序自動儲存於此，每晚的爬取會重新執行。若不想重新爬取但想保留條件，請取消優先。",
     "No saved searches yet. Run a live search on :link to add one.": "尚未儲存任何搜尋。請至 :link 執行一次即時搜尋以新增。",
@@ -136,7 +131,6 @@
     "Revoke priority": "取消優先",
     "Promote": "提升優先",
     "Remove this watch?": "確定要移除這項追蹤嗎？",
-
     "All users": "所有使用者",
     "New user": "新增使用者",
     "Name": "姓名",
@@ -160,7 +154,6 @@
     "Password": "密碼",
     "(leave blank to keep current)": "（留空表示維持目前密碼）",
     "Confirm password": "確認密碼",
-
     "Adapters": "Adapter 列表",
     "Stuck threshold:": "停滯閾值：",
     "min": "分鐘",
@@ -185,13 +178,11 @@
     "off": "關",
     "No adapters reported.": "沒有 Adapter 回報資料。",
     "Counts come from :code; \"Stuck\" = jobs in :running whose :locked is older than the stuck threshold. \"Disabled\" health means :flag.": "計數來自 :code；「停滯」指狀態為 :running 且 :locked 已超過停滯閾值的工作。「停用」狀態代表 :flag。",
-
     "Dashboard": "儀錶板",
     "Welcome back, :name": "歡迎回來，:name",
     "Find motorcycle parts": "搜尋摩托車零件",
     "Searches eBay, Webike, Buyee, Yahoo Auctions, and more": "搜尋 eBay、Webike、Buyee、Yahoo Auctions 等平台",
     "e.g. exhaust pipe, brake pads, air filter…": "例如：排氣管、煞車皮、空氣濾清器…",
-    "Search live sources": "搜尋即時來源",
     "Bikes tracked": "追蹤中的機車",
     "Manage bikes": "管理機車",
     "Parts found": "已找到零件",
@@ -204,10 +195,8 @@
     "View all": "查看全部",
     "not crawled": "尚未爬取",
     "No bikes yet. Add your first bike to start finding parts.": "尚未新增機車。新增第一台機車以開始尋找零件。",
-    "Add a bike": "新增機車",
     "Top Watches": "熱門追蹤",
     "No saved searches yet. Use the search bar above to get started.": "尚無已儲存的搜尋。請使用上方搜尋列開始。",
-    "All bikes": "所有機車",
     "Status": "狀態",
     "Kind": "類型",
     "Finished": "完成時間",
@@ -219,7 +208,6 @@
     "Searching… this may take up to a minute.": "搜尋中，請稍候，最長需要一分鐘…",
     "Failed to start search. Please try again.": "搜尋啟動失敗，請再試一次。",
     "Network error. Please try again.": "網路錯誤，請再試一次。",
-
     "Welcome Back !": "歡迎回來！",
     "Sign in to continue.": "請登入以繼續。",
     "Username": "使用者名稱",
@@ -237,12 +225,10 @@
     "Click here": "點此處",
     "Confirm Password": "確認密碼",
     "Enter confirm password": "請再次輸入密碼",
-
     "User Details Updated successfully!": "已成功更新使用者資料。",
     "Something went wrong!": "發生錯誤。",
     "Password updated successfully!": "密碼已更新。",
     "Your Current password does not matches with the password you provided. Please try again.": "您目前的密碼不正確，請再試一次。",
-
     "Create New Account": "建立新帳號",
     "Get your free account now": "立即取得免費帳號",
     "Enter email address": "請輸入電子郵件",
@@ -264,9 +250,7 @@
     "Confirm": "確認",
     "Didn't receive a code?": "沒收到驗證碼？",
     "Resend": "重新傳送",
-
     "Logout": "登出",
-
     "Parts Glossary": "零件詞彙表",
     "Add term": "新增詞彙",
     "Save term": "儲存詞彙",
@@ -283,18 +267,27 @@
     "Optional notes, synonyms, or context": "選填備註、同義詞或說明",
     "No results for \":query\"": "找不到「:query」的結果",
     "Could not generate a URL slug from the provided term": "無法從輸入的詞彙生成識別碼",
-
-    "glossary.category.engine":     "引擎",
-    "glossary.category.brakes":     "煞車",
+    "glossary.category.engine": "引擎",
+    "glossary.category.brakes": "煞車",
     "glossary.category.electrical": "電系",
     "glossary.category.suspension": "懸吊",
     "glossary.category.drivetrain": "傳動",
-    "glossary.category.exhaust":    "排氣",
-    "glossary.category.fuel":       "燃油",
-    "glossary.category.cooling":    "冷卻",
-    "glossary.category.frame":      "車架",
-    "glossary.category.body":       "外觀",
-    "glossary.category.wheels":     "輪組",
-    "glossary.category.fasteners":  "鎖件",
-    "glossary.category.general":    "一般"
+    "glossary.category.exhaust": "排氣",
+    "glossary.category.fuel": "燃油",
+    "glossary.category.cooling": "冷卻",
+    "glossary.category.frame": "車架",
+    "glossary.category.body": "外觀",
+    "glossary.category.wheels": "輪組",
+    "glossary.category.fasteners": "鎖件",
+    "glossary.category.general": "一般",
+    "Reset Password Notification": "密碼重設通知",
+    "You are receiving this email because we received a password reset request for your account.": "您收到這封郵件，是因為我們收到了您帳號的密碼重設請求。",
+    "Reset Password": "重設密碼",
+    "This password reset link will expire in :count minutes.": "此密碼重設連結將在 :count 分鐘後失效。",
+    "If you did not request a password reset, no further action is required.": "如果您並未要求重設密碼，則無需採取任何進一步的動作。",
+    "Hello!": "您好！",
+    "Regards,": "敬上，",
+    "Whoops!": "糟糕！",
+    "All rights reserved.": "版權所有。",
+    "If you're having trouble clicking the \":actionText\" button, copy and paste the URL below\ninto your web browser:": "如果您無法點擊「:actionText」按鈕，請複製以下網址並貼到您的瀏覽器中："
 }
