@@ -193,6 +193,8 @@ parts-watch jobs                           # counts by status × adapter
 parts-watch jobs --stuck                   # rows locked by a dead worker
 parts-watch jobs --release-stale           # return stale-locked rows to pending
 parts-watch jobs --prune --older-than-days 7
+parts-watch cleanse-listings               # hard-delete listings unseen for 14d (expired auctions etc.)
+parts-watch cleanse-listings --dry-run     # preview deletions, delete nothing
 ```
 
 ## Distributed workers

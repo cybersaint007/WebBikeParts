@@ -55,6 +55,10 @@ parts-watch jobs --stuck                          # rows in 'running' with stale
 parts-watch jobs --release-stale                  # return stale-locked rows to pending
 parts-watch jobs --prune --older-than-days 7      # delete completed/failed older than N days
 
+parts-watch cleanse-listings                      # hard-delete listings unseen for 14d (expired auctions etc.)
+parts-watch cleanse-listings --dry-run            # report what would be deleted, delete nothing
+parts-watch cleanse-listings --older-than-days 30 --freshness-window-days 2
+
 parts-watch report --format markdown|html
 parts-watch export --format csv|json
 ```
@@ -140,6 +144,7 @@ php artisan queue:work --queue=sync
   - `LiveSearchJob` — `parts-watch search --query <q> --bike-key …`
   - `CrawlAllJob` — `parts-watch crawl-all`, dispatched **hourly** by the scheduler (`Console\Kernel::schedule`). Skipped if a previous `crawl_all` SyncRun is still queued/running, so a long sweep doesn't pile up duplicates.
   - `CrawlWatchesJob` — `parts-watch crawl-watches`, dispatched hourly under the same in-flight guard.
+  - `CleanseListingsJob` — `parts-watch cleanse-listings --older-than-days 14`, dispatched **daily** under the same in-flight guard. Hard-deletes listings unseen by a crawl in 14 days (expired auctions, sold-out parts; snapshots cascade). A **per-source freshness guard** skips any source whose newest listing is itself older than `--freshness-window-days` (default 2) so a dead worker / blocked adapter can't wipe still-live listings. `listing_status='manual_seed'` rows are exempt. Logic lives in `services/listings.py::cleanse_stale`.
   - `RunPartsWatchJob` — base class with the env-override gotcha below
 - **CRITICAL — subprocess env override**: when Laravel shells out, `Process::env([...])` must explicitly set `DATABASE_URL` and `DB_SCHEMA=watcher`. Otherwise the child process inherits Laravel's `DB_SCHEMA=console` and the crawler hits the wrong schema (e.g. `console.sources` doesn't exist). `RunPartsWatchJob` builds `DATABASE_URL` from `WATCHER_DB_USERNAME / WATCHER_DB_PASSWORD / WATCHER_DB_HOST / WATCHER_DB_PORT / WATCHER_DB_DATABASE` (each falling back to the corresponding `DB_*` if unset). See `RunPartsWatchJob.php`.
 - **`SyncRun.output_excerpt` is null until the subprocess exits.** `Process::run()` is synchronous — it captures stdout/stderr only after the process finishes, then calls `markSuccess/markFailed`. To track live progress of a running `live_search` run, query `watcher.crawl_jobs` directly: `SyncController::show` returns `jobs_done` and `jobs_total` (completed+failed / total) for `status=running` live_search runs, using a time-window join on `enqueued_by LIKE 'live-search:%'` and `created_at` proximity. To recover a full traceback from a failed run: `source .venv/bin/activate && parts-watch <cmd> 2>&1 | tee /tmp/<cmd>.log`.
@@ -165,7 +170,7 @@ php artisan queue:work --queue=sync
 | `App\Models\User` | `pgsql` | `userBikes()`, `partsWatches()`, helper `selectedCatalogBikeIds()` |
 | `App\Models\UserBike` | `pgsql` | Soft FK to `Watcher\BikeCatalog` |
 | `App\Models\PartsWatch` | `pgsql` | Watch-list row; `is_high_priority` drives re-crawl |
-| `App\Models\SyncRun` | `pgsql` | Tracks queued/running jobs; `kind` = `catalog`/`crawl_bike`/`live_search`/`crawl_all`/`crawl_watches` |
+| `App\Models\SyncRun` | `pgsql` | Tracks queued/running jobs; `kind` = `catalog`/`crawl_bike`/`live_search`/`crawl_all`/`crawl_watches`/`cleanse_listings` |
 | `App\Models\Watcher\BikeCatalog` | `pgsql_watcher` | `displayLabel()`; `availableMakes()`, `modelsForMake()`, `yearsForModel()` for cascading dropdowns |
 | `App\Models\Watcher\Listing` | `pgsql_watcher` | Scopes: `forBikeKeys`, `category`, `source`, `condition`, `priceBetween`, `search` (ILIKE on title/description/part_number/fitment_text) |
 

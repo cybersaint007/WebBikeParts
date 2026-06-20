@@ -25,6 +25,7 @@ class SyncRun extends Model
     public const KIND_LIVE_SEARCH = 'live_search';
     public const KIND_CRAWL_ALL = 'crawl_all';
     public const KIND_CRAWL_WATCHES = 'crawl_watches';
+    public const KIND_CLEANSE_LISTINGS = 'cleanse_listings';
 
     public const STATUS_QUEUED = 'queued';
     public const STATUS_RUNNING = 'running';

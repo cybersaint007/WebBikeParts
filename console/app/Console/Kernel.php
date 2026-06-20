@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Jobs\CleanseListingsJob;
 use App\Jobs\CrawlAllJob;
 use App\Jobs\CrawlWatchesJob;
 use App\Models\SyncRun;
@@ -31,6 +32,15 @@ class Kernel extends ConsoleKernel
         $schedule->call(fn () => $this->dispatchSweep(SyncRun::KIND_CRAWL_WATCHES, CrawlWatchesJob::class))
             ->hourly()
             ->name('crawl-watches')
+            ->onOneServer();
+
+        // Daily cleanse: hard-delete listings unseen by a crawl in 14 days
+        // (expired auctions, sold-out parts). A per-source freshness guard in
+        // the CLI skips sources with no recent activity so a crawler outage
+        // can't wipe still-live listings.
+        $schedule->call(fn () => $this->dispatchSweep(SyncRun::KIND_CLEANSE_LISTINGS, CleanseListingsJob::class))
+            ->daily()
+            ->name('cleanse-listings')
             ->onOneServer();
     }
 

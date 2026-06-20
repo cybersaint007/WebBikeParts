@@ -12,7 +12,7 @@ from rich.table import Table
 from motorcycle_parts_watcher.bikes import load_bike_by_key
 from motorcycle_parts_watcher.config import get_settings
 from motorcycle_parts_watcher.db import SessionLocal
-from motorcycle_parts_watcher.services import job_queue
+from motorcycle_parts_watcher.services import job_queue, listings
 from motorcycle_parts_watcher.services.bootstrap import seed_sources
 from motorcycle_parts_watcher.services.catalog_sync import sync_catalog
 from motorcycle_parts_watcher.services.crawl import CrawlProducer, CrawlWorker, EnqueueSummary
@@ -280,6 +280,42 @@ def jobs(
     for r in rows:
         table.add_row(r["status"], r["adapter"], str(r["n"]))
     console.print(table)
+
+
+@app.command("cleanse-listings")
+def cleanse_listings(
+    older_than_days: Annotated[int, typer.Option(help="Delete listings unseen for N days")] = listings.DEFAULT_OLDER_THAN_DAYS,
+    freshness_window_days: Annotated[int, typer.Option(help="Only delete from sources crawled within N days")] = listings.DEFAULT_FRESHNESS_WINDOW_DAYS,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Report what would be deleted, delete nothing")] = False,
+) -> None:
+    """Hard-delete stale listings (unseen for N days), per fresh source."""
+    with SessionLocal() as session:
+        result = listings.cleanse_stale(
+            session,
+            older_than_days=older_than_days,
+            freshness_window_days=freshness_window_days,
+            dry_run=dry_run,
+        )
+        if not dry_run:
+            session.commit()
+
+    verb = "would delete" if dry_run else "deleted"
+    console.print(
+        f"[green]{verb}[/green] {result.deleted} listing(s) unseen for "
+        f">{older_than_days} day(s)"
+    )
+    if result.per_source:
+        table = Table(title=f"{verb} by source")
+        table.add_column("source"); table.add_column("count", justify="right")
+        for src, n in sorted(result.per_source.items()):
+            table.add_row(src, str(n))
+        console.print(table)
+    if result.skipped_sources:
+        console.print(
+            f"[yellow]skipped[/yellow] (no listing seen within "
+            f"{freshness_window_days} day(s) — adapter blocked or worker down): "
+            f"{', '.join(result.skipped_sources)}"
+        )
 
 
 # ---------- reports / export ------------------------------------------------
