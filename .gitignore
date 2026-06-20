@@ -2,6 +2,9 @@
 .env
 .env.local
 
+# Deploy state (commit the running containers were built from)
+.deployed_sha
+
 # Python
 .venv/
 venv/

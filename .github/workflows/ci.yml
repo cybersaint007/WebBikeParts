@@ -182,17 +182,34 @@ jobs:
             set -e
             cd /home/dockeradmin/fincosoft_sites/WebBikeParts
 
-            # Capture what is about to change before pulling
+            # Diff against the commit the RUNNING containers were built from,
+            # recorded in .deployed_sha — not against git's HEAD. The working
+            # tree here can already be at origin/main (commits are sometimes
+            # pushed from this host), which would make a HEAD..origin/main diff
+            # empty and wrongly skip a needed rebuild. Tracking the deployed SHA
+            # is robust to that, to re-runs, and to local edits.
+            PREV=$(cat .deployed_sha 2>/dev/null || true)
+
             git fetch origin main
-            CHANGED=$(git diff HEAD origin/main --name-only 2>/dev/null || true)
             git pull origin main
+            NEW=$(git rev-parse HEAD)
+
+            if [ -z "$PREV" ]; then
+              # No record of the last deploy → rebuild to be safe.
+              CHANGED="__ALL__"
+            else
+              CHANGED=$(git diff --name-only "$PREV" "$NEW")
+            fi
 
             # Rebuild images when Dockerfiles, docker config, or crawler source changes;
             # otherwise a restart is enough (entrypoint handles composer.lock changes).
-            if echo "$CHANGED" | grep -qE '(^|/)Dockerfile\.|^docker/|^pyproject\.toml|^alembic\.ini|^alembic/|^motorcycle_parts_watcher/'; then
-              echo "Infrastructure/crawler change — rebuilding images..."
+            if [ "$CHANGED" = "__ALL__" ] || echo "$CHANGED" | grep -qE '(^|/)Dockerfile\.|^docker/|^pyproject\.toml|^alembic\.ini|^alembic/|^motorcycle_parts_watcher/'; then
+              echo "Infrastructure/crawler change (or first tracked deploy) — rebuilding images..."
               docker compose up -d --build
             else
               echo "Code-only change — restarting PHP services..."
               docker compose restart php queue scheduler
             fi
+
+            # Record what is now deployed, only after a successful deploy.
+            echo "$NEW" > .deployed_sha
