@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Two sub-projects sharing one PostgreSQL database (`bike_parts_watcher`):
 
-- **`motorcycle_parts_watcher/`** — Python 3.12+ async crawler. Pulls aftermarket / OEM / used parts listings from eBay, Webike TW (per-bike `/md/` scrape + Playwright `/search` keyword scrape), Yahoo Auctions (JP), Buyee, Monotaro, Mercari JP (Playwright), Goobike Parts (Playwright), Old Bike Barn, plus a manual-search fallback, into the `watcher` schema. Stub adapters with no live implementation: `webike_jp`, `croooober`, `rakuten` — see `ADAPTERS.md`. Typer CLI entrypoint: `parts-watch`.
+- **`motorcycle_parts_watcher/`** — Python 3.12+ async crawler. Pulls aftermarket / OEM / used parts listings from eBay, Webike TW (per-bike `/md/` scrape + Playwright `/search` keyword scrape), Yahoo Auctions (JP), Buyee, Monotaro, Mercari JP (Playwright), Goobike Parts (Playwright), Old Bike Barn, plus a manual-search fallback, into the `watcher` schema. There is also a `webike_cat` adapter (`adapters/webike_cat.py`, category-walk over a bike's `/parts/md/` leaf categories; `WEBIKE_CAT_ENABLED` defaults `false`). Stub adapters with no live implementation: `webike_jp`, `croooober`, `rakuten` — see `ADAPTERS.md`. Typer CLI entrypoint: `parts-watch`.
 - **`console/`** — Laravel 12 / PHP 8.4 web UI (Velzon admin template, Vite, Bootstrap 5). Owns the `console` schema, reads from `watcher` via a second DB connection, and **shells out to `parts-watch`** via queued jobs for on-demand crawls and catalog sync.
 
 The two pieces are not independent — the console drives crawl scope (users pick bikes; only those get crawled) and triggers ad-hoc work.
@@ -232,9 +232,11 @@ Bring it up with `docker compose up -d --build`. The `bike_images` named volume 
 `.github/workflows/ci.yml` runs on every push/PR to `main`:
 
 1. **`python`** — spins up Postgres 16, runs `alembic upgrade head`, then `pytest -q`.
-2. **`laravel`** — same Postgres, runs Alembic for the watcher schema, `php artisan migrate` for console, then `php artisan test`.
+2. **`laravel`** — same Postgres, runs Alembic for the watcher schema, `php artisan migrate` for console, then `php artisan test`. Uses **PHP 8.4** (`shivammathur/setup-php`); 8.2 fails because Laravel 12 locks Symfony 7.x components that require `php >=8.4`. The `.env` `APP_KEY` is set via `php artisan key:generate` (a prior `sed`-based injection broke when the base64 key contained a `/`).
 3. **`docker-build`** — builds both Dockerfiles using stub `.env` files.
-4. **`deploy`** — on push to `main`, SSHes to the prod host with `appleboy/ssh-action`, `git pull`s, and **conditionally rebuilds**: if `git diff` shows changes to `Dockerfile.*`, `docker/`, `pyproject.toml`, `alembic/`, or `motorcycle_parts_watcher/`, runs `docker compose up -d --build`; otherwise just `docker compose restart php queue scheduler`. PHP-only changes therefore deploy without an image rebuild — but Python crawler changes do.
+4. **`deploy`** — on push to `main`, SSHes to the prod host with `appleboy/ssh-action`, `git pull`s, and **conditionally rebuilds**: if the deploy delta touches `Dockerfile.*`, `docker/`, `pyproject.toml`, `alembic.ini`, `alembic/`, or `motorcycle_parts_watcher/`, runs `docker compose up -d --build`; otherwise just `docker compose restart php queue scheduler`. PHP-only changes deploy without an image rebuild — but Python crawler changes do. **The rebuild delta is computed against `.deployed_sha`** (a gitignored file holding the commit the running containers were built from), *not* `HEAD..origin/main`. This matters because commits are sometimes pushed *from the prod host itself*, which leaves the working tree already at `origin/main` and makes a `HEAD`-based diff empty — silently skipping a needed rebuild. Missing/empty `.deployed_sha` falls back to a full rebuild; the file is rewritten after each successful deploy.
+
+**Consequence of the volume-mount split:** `./console` is bind-mounted into the `php`/`queue`/`scheduler` containers, so PHP changes go live on a plain restart. But the Python crawler (incl. the `parts-watch` CLI used by Laravel's queued jobs) is **pip-installed into the image at build time**, so crawler changes are invisible until an image rebuild — even though the queue worker is the thing that shells out to `parts-watch`. A half-deploy (Laravel job present, CLI command absent) makes the job fail with "No such command".
 
 ### Distributed worker deployment
 
@@ -281,3 +283,16 @@ If the adapter is enabled in env but the `sources` row is `false`, `_crawl_one` 
 ### Playwright adapters on non-Docker workers
 
 Mercari and Goobike use Playwright. Any worker host running these must have Chromium installed (`playwright install chromium --with-deps`). The `Dockerfile.crawler` does this; `Dockerfile.console` does not. Running a Playwright adapter from the console container will fail.
+
+### "Runs but returns nothing" — data-center IP blocking
+
+Several adapters complete their jobs successfully (`status='completed'`) yet ingest **zero** rows, because they catch HTTP failures and return `[]`. The queue looks healthy while the source yields nothing. This is almost always the **central host's data-center IP being blocked** by the source's WAF/anti-bot — confirmed for:
+- **`buyee`** — `buyee.jp` returns HTTP **403** for every request (even the homepage) from the VPS IP.
+- **`webike`** (the main `/md/` scraper) — `webike.tw` **geo-redirects the data-center IP to `www.webike-china.cn` behind a Cloudflare "Just a moment…" challenge → 403**. It only sneaks through intermittently (~1 sweep in 4), so ingestion is a sporadic trickle.
+- **`webike_search`** — same Cloudflare wall by design (see its adapter note).
+
+Diagnose by checking `result_found`/`result_ingested` on recent `watcher.crawl_jobs` rows, then probing the endpoint from inside the crawler container (no `curl`; use the bundled `httpx`):
+```bash
+docker compose exec -T crawler python3 -c "import httpx; r=httpx.get('https://buyee.jp/', timeout=20, follow_redirects=True); print(r.status_code, r.url)"
+```
+The fix is **not** code — it's egress: route the adapter's HTTP client through a residential proxy (the `WEBIKE_PROXY_URL` hook, currently wired only into `webike_search`) or run a geo-located worker (TW for webike, JP for buyee/yahoo/mercari) per *Distributed worker deployment* above.
