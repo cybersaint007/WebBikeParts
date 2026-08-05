@@ -179,7 +179,7 @@ php artisan queue:work --queue=sync
 ## Database
 
 - **PostgreSQL only** (`postgresql+psycopg://`). No SQLite.
-- PostgreSQL runs in a Docker container named `postgresql` (image `postgres:latest`), bound to `127.0.0.1:5432` and `100.85.170.113:5432`. The host's `postgresql` systemd service is **not** used. Data is bind-mounted from `/home/dockeradmin/system_sites/postgresql/data` on the host.
+- **`bike_parts_watcher` runs on `fincosg3`** (tailscale IP `100.71.209.4`, FQDN `fincosg3.tailae6158.ts.net`), the same PostgreSQL 16 host used by FincoLedger — **not** the local Docker `postgresql` container on this host (fincosg2) that the compose stack's `postgresql_pgnet` network was originally built around. That local container (image `postgres:latest`, bound to `127.0.0.1:5432` / `100.85.170.113:5432`, data bind-mounted from `/home/dockeradmin/system_sites/postgresql/data`) still exists and still serves other unrelated DBs (`akauntinghub`, `bizflow`, `imctally`, …), but `bike_parts_watcher` was migrated off it (2026-08-05, verified pg_dump/pg_restore with matching row counts) and dropped locally. DB user `bizodus`; **`psql` is not installed on fincosg3** — connect from a host that has `psql`/`pg_dump`/`pg_restore`, or use PHP/PDO for ad-hoc inspection from the app containers.
 - One DB, two schemas: `watcher` (Python/Alembic) + `console` (Laravel migrations).
 - Alembic migrations: `alembic/versions/` (`0001_initial_schema`, `0002_bike_catalog`, `0003_categories`, `0004_search_indexes` — `pg_trgm` GIN on `title`/`description`/`part_number`, `0005_crawl_jobs` — distributed-worker queue table, `0006_bike_catalog_image` — nullable `image_url` on `bike_catalog`).
 - Listings dedup: `(source_name, source_item_id)` UNIQUE, `url` UNIQUE, `content_hash` indexed.
@@ -191,7 +191,7 @@ php artisan queue:work --queue=sync
 Top-level `.env` (Python crawler):
 
 ```
-DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/bike_parts_watcher
+DATABASE_URL=postgresql+psycopg://bizodus:...@100.71.209.4:5432/bike_parts_watcher   # fincosg3, not localhost
 DB_SCHEMA=watcher
 EBAY_ENABLED=true   EBAY_CLIENT_ID=…   EBAY_CLIENT_SECRET=…   EBAY_MARKETPLACE_IDS=EBAY_US,EBAY_GB,EBAY_DE,EBAY_AU
 WEBIKE_ENABLED=true
@@ -207,11 +207,11 @@ OLD_BIKE_BARN_ENABLED=true
 HTTP_TIMEOUT_SECONDS=20   HTTP_RETRIES=3   HTTP_RATE_LIMIT_PER_SECOND=3
 ```
 
-`console/.env` (Laravel) needs the same DB plus `DB_SCHEMA=console`, `WATCHER_DB_SCHEMA=watcher`, the `WATCHER_DB_*` connection vars (`USERNAME` / `PASSWORD` / `HOST` / `PORT` / `DATABASE` — each falls back to `DB_*` if unset; required by `RunPartsWatchJob`'s subprocess env override), `ADMIN_EMAIL` / `ADMIN_PASSWORD`, and `QUEUE_CONNECTION=database`.
+`console/.env` (Laravel) needs the same DB (`DB_HOST=100.71.209.4`) plus `DB_SCHEMA=console`, `WATCHER_DB_SCHEMA=watcher`, the `WATCHER_DB_*` connection vars (`USERNAME` / `PASSWORD` / `HOST` / `PORT` / `DATABASE` — each falls back to `DB_*` if unset; required by `RunPartsWatchJob`'s subprocess env override), `ADMIN_EMAIL` / `ADMIN_PASSWORD`, and `QUEUE_CONNECTION=database`.
 
 ### Docker Compose runtime
 
-`docker-compose.yml` is the production runtime. It defines six long-running services plus two one-shot migrators, all sharing an external `postgresql_pgnet` network (the same network the Postgres container lives on):
+`docker-compose.yml` is the production runtime. It defines six long-running services plus two one-shot migrators, all sharing an external `postgresql_pgnet` network. That network no longer needs to contain a Postgres container — `bike_parts_watcher` lives on fincosg3 (`100.71.209.4:5432`), reached from inside the containers over the host's tailscale route; `postgresql_pgnet` still exists (other local DBs use it) and is kept as the compose network for inter-container traffic, but DB connectivity for these services is now external/tailscale, not container-to-container:
 
 - `php-migrate` (one-shot) → `php artisan migrate --force`
 - `crawler-migrate` (one-shot) → `python3 -m alembic upgrade head`
@@ -264,7 +264,7 @@ Operational notes:
 Each worker must have a **unique `--worker-id`**. If you run `parts-watch worker` locally while Docker workers are also active, they compete for the same queue. If a local worker dies mid-job, its rows stay `status='running'` until `release_stale` runs (30-minute threshold). Emergency fix:
 
 ```sql
--- In psql on bike_parts_watcher
+-- psql -h 100.71.209.4 -U bizodus -d bike_parts_watcher   (fincosg3)
 UPDATE watcher.crawl_jobs
 SET status='pending', locked_by=NULL, locked_at=NULL, started_at=NULL
 WHERE locked_by='<dead-worker-id>' AND status='running';
